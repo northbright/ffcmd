@@ -1,109 +1,155 @@
 package ffcmd
 
-import "fmt"
+import (
+	"fmt"
+	"regexp"
+)
 
-type arg struct {
+type option struct {
 	k string
-	v string
+	v any
 }
 
 type Filter struct {
-	name string
-	args []arg
+	name    string
+	options []option
 }
 
-func NewFilter(name string) (*Filter, error) {
-	if name == "" {
-		return nil, fmt.Errorf("empty filter name")
-	}
-	return &Filter{name: name, args: []arg{}}, nil
+func NewFilter(name string) *Filter {
+	return &Filter{name: name, options: []option{}}
 }
 
-func (f *Filter) AddArg(k, v string) {
-	f.args = append(f.args, arg{k: k, v: v})
+func (f *Filter) Option(k string, v any) *Filter {
+	f.options = append(f.options, option{k: k, v: v})
+	return f
 }
 
-func (f *Filter) Cmd() string {
-	l := len(f.args)
-	cmd := fmt.Sprintf("%s=", f.name)
-	for i, arg := range f.args {
-		cmd += fmt.Sprintf("%s=%s", arg.k, arg.v)
+func (f *Filter) String() string {
+	l := len(f.options)
+	str := fmt.Sprintf("%s=", f.name)
+	for i, option := range f.options {
+		str += fmt.Sprintf("%s=%v", option.k, option.v)
 		if i < l-1 {
-			cmd += ":"
+			str += ":"
 		}
 	}
-	return cmd
+	return str
 }
 
-type FilterPipe struct {
+type FilterChain struct {
 	inputs   []string
-	name     string
 	filters  []*Filter
 	outputFn func() string
 }
 
-func NewFilterPipe(name string, outputFunc func() string) (*FilterPipe, error) {
-	if name == "" {
-		return nil, fmt.Errorf("empty filter pipe name")
-	}
-	return &FilterPipe{name: name, outputFn: outputFunc}, nil
+func NewFilterChain(outputFunc func() string) *FilterChain {
+	return &FilterChain{inputs: []string{}, outputFn: outputFunc}
 }
 
-func (fp *FilterPipe) AddInput(input string) {
-	fp.inputs = append(fp.inputs, input)
+func (fc *FilterChain) AddInput(input string) {
+	fc.inputs = append(fc.inputs, input)
 }
 
-func (fp *FilterPipe) AddInputByID(id int, stream string, streamID int) {
-	fp.inputs = append(fp.inputs, fmt.Sprintf("[%d:%s:%d]", id, stream, streamID))
+func (fc *FilterChain) AddStreamInput(inputID int, streamType string, streamID int) {
+	fc.inputs = append(fc.inputs, fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID))
 }
 
-func (fp *FilterPipe) AddInputByOutput(fpOut *FilterPipe) {
-	fp.inputs = append(fp.inputs, fpOut.Output())
+func (fc *FilterChain) AddOutputAsInput(fpOut *FilterChain) {
+	fc.inputs = append(fc.inputs, fpOut.Output())
 }
 
-func (fp *FilterPipe) Inputs() string {
+func (fc *FilterChain) Inputs() string {
 	inputs := ""
-	for _, in := range fp.inputs {
+	for _, in := range fc.inputs {
 		inputs += in
 	}
 	return inputs
 }
 
-func (fp *FilterPipe) AddFilter(f *Filter) {
-	fp.filters = append(fp.filters, f)
+func (fc *FilterChain) Chain(f *Filter) *FilterChain {
+	fc.filters = append(fc.filters, f)
+	return fc
 }
 
-func (fp *FilterPipe) Output() string {
-	return fp.outputFn()
+func (fc *FilterChain) Output() string {
+	if len(fc.filters) == 0 {
+		// No filters in the chain, return inputs directly.
+		return fc.Inputs()
+	} else {
+		return fc.outputFn()
+	}
 }
 
-func (fp *FilterPipe) Cmd() string {
-	cmd := fp.Inputs()
-	l := len(fp.filters)
+func (fc *FilterChain) String() string {
+	str := fc.Inputs()
+	l := len(fc.filters)
 
-	for i, f := range fp.filters {
-		cmd += f.Cmd()
+	for i, f := range fc.filters {
+		str += f.String()
 		if i < l-1 {
-			cmd += ","
+			str += ","
 		}
 	}
 
-	cmd += fp.Output()
-	return cmd
+	str += fc.Output()
+	return str
 }
 
 type Cmd struct {
 	inputs []string
-	pipes  map[string]*FilterPipe
 	output string
+	fg     []*FilterChain
 }
 
-func New() *Cmd {
-	return &Cmd{inputs: []string{}, pipes: make(map[string]*FilterPipe), output: ""}
+func New(output string) *Cmd {
+	return &Cmd{inputs: []string{}, output: output, fg: []*FilterChain{}}
 }
 
-func (c *Cmd) AddInput(input string) int {
+// AddInput adds input and returns index of the input.
+func (c *Cmd) AddInput(in string) int {
 	id := len(c.inputs)
-	c.inputs = append(c.inputs, input)
+	c.inputs = append(c.inputs, in)
 	return id
+}
+
+func (c *Cmd) Chain(fc *FilterChain) *Cmd {
+	c.fg = append(c.fg, fc)
+	return c
+}
+
+func (c *Cmd) String() (string, error) {
+	str := `ffmpeg \
+`
+	for _, in := range c.inputs {
+		str += fmt.Sprintf("-i \"%s\"\n", in)
+	}
+
+	str += "-filter_complex \n"
+
+	l := len(c.fg)
+	var selectedStreams []string
+
+	for i, fc := range c.fg {
+		str += fc.String()
+		if i < l-1 {
+			str += ";\n"
+		} else {
+			// Use outputs of final filterchain as selected streams
+			re := regexp.MustCompile(`\[\w+\]`)
+			selectedStreams = re.FindAllString(fc.Output(), -1)
+			if len(selectedStreams) == 0 {
+				return "", fmt.Errorf("no ouput found in last filterchain")
+			}
+		}
+	}
+
+	str += "\"\n"
+
+	for _, stream := range selectedStreams {
+		str += fmt.Sprintf("-map \"%s\"\n", stream)
+	}
+
+	str += c.output
+
+	return str, nil
 }
