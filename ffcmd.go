@@ -37,13 +37,13 @@ func (f *Filter) String() string {
 }
 
 type FilterChain struct {
-	inputs  []string
+	inputs  []any
 	output  string
 	filters []*Filter
 }
 
 func NewFilterChain(output string) *FilterChain {
-	return &FilterChain{inputs: []string{}, output: output}
+	return &FilterChain{inputs: []any{}, output: output}
 }
 
 func (fc *FilterChain) AddInput(input string) {
@@ -54,10 +54,20 @@ func (fc *FilterChain) AddStreamInput(inputID int, streamType string, streamID i
 	fc.inputs = append(fc.inputs, fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID))
 }
 
+func (fc *FilterChain) AddInputFromOutput(fcOut *FilterChain) {
+	fc.inputs = append(fc.inputs, fcOut)
+}
+
 func (fc *FilterChain) Inputs() string {
 	inputs := ""
 	for _, in := range fc.inputs {
-		inputs += in
+		switch vv := in.(type) {
+		case string:
+			inputs += vv
+		case *FilterChain:
+			inputs += vv.Output()
+		default:
+		}
 	}
 	return inputs
 }

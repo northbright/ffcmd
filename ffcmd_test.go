@@ -17,8 +17,10 @@ func Example() {
 	}
 
 	clips := []clip{
-		{file: "01.MOV", start: 10, end: 22, subtitle: "Goal from Jacky!"},
-		{file: "02.MOV", start: 0, end: 7, subtitle: "Goal from Sonny!"},
+		{file: "01.MOV", start: 0, end: 0, subtitle: "Goal from Jacky!"},
+		{file: "02.MOV", start: 0, end: 8, subtitle: "Goal from Sonny!"},
+		{file: "03.MOV", start: 8, end: 13, subtitle: ""},
+		{file: "04.MOV", start: 0, end: 0, subtitle: ""},
 	}
 
 	// Create ffmpeg command with output file.
@@ -105,8 +107,8 @@ func Example() {
 		cmd.Chain(clip_a)
 
 		// Add clip video / audio filter chain's output as concat filterchain's input.
-		concatFC.AddInput(clip_v.Output())
-		concatFC.AddInput(clip_a.Output())
+		concatFC.AddInputFromOutput(clip_v)
+		concatFC.AddInputFromOutput(clip_a)
 
 		// Increase segment count.
 		n += 1
