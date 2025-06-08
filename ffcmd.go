@@ -50,11 +50,11 @@ func (fc *FilterChain) AddInput(input string) {
 	fc.inputs = append(fc.inputs, input)
 }
 
-func (fc *FilterChain) AddStreamInput(inputID int, streamType string, streamID int) {
+func (fc *FilterChain) AddInputByID(inputID int, streamType string, streamID int) {
 	fc.inputs = append(fc.inputs, fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID))
 }
 
-func (fc *FilterChain) AddInputFromOutput(fcOut *FilterChain) {
+func (fc *FilterChain) AddInputByOutput(fcOut *FilterChain) {
 	fc.inputs = append(fc.inputs, fcOut)
 }
 
@@ -130,11 +130,15 @@ func (c *Cmd) Chain(fc *FilterChain) *Cmd {
 	return c
 }
 
-func (c *Cmd) Map(inputID int, streamType string, streamID int) {
+func (c *Cmd) Map(stream string) {
+	c.selectedStreams = append(c.selectedStreams, stream)
+}
+
+func (c *Cmd) MapByID(inputID int, streamType string, streamID int) {
 	c.selectedStreams = append(c.selectedStreams, fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID))
 }
 
-func (c *Cmd) MapFilterChainOutput(fc *FilterChain) error {
+func (c *Cmd) MapByOutput(fc *FilterChain) error {
 	re := regexp.MustCompile(`\[\w+\]`)
 	streams := re.FindAllString(fc.Output(), -1)
 	if len(streams) == 0 {
@@ -148,30 +152,29 @@ func (c *Cmd) MapFilterChainOutput(fc *FilterChain) error {
 }
 
 func (c *Cmd) String() (string, error) {
-	for i, fc := range c.fg {
-		fmt.Printf("%d: fc: %v\n", i, fc)
-	}
+	str := "ffmpeg \\\n"
 
-	str := `ffmpeg \
-`
 	for _, in := range c.inputs {
-		str += fmt.Sprintf("-i \"%s\"\n", in)
+		str += fmt.Sprintf("-i \"%s\" \\\n", in)
 	}
 
-	str += "-filter_complex \n"
+	str += "-filter_complex \" \\\n"
 
 	l := len(c.fg)
 	for i, fc := range c.fg {
 		str += fc.String()
 		if i < l-1 {
 			str += ";\n"
+		} else {
+			// Complex filtergraph output streams with labeled pads must be mapped once and exactly once.
+			c.MapByOutput(fc)
 		}
 	}
 
-	str += "\"\n"
+	str += "\" \\\n"
 
 	for _, stream := range c.selectedStreams {
-		str += fmt.Sprintf("-map \"%s\"\n", stream)
+		str += fmt.Sprintf("-map \"%s\" \\\n", stream)
 	}
 
 	str += c.output

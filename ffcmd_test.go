@@ -17,10 +17,8 @@ func Example() {
 	}
 
 	clips := []clip{
-		{file: "01.MOV", start: 0, end: 0, subtitle: "Goal from Jacky!"},
-		{file: "02.MOV", start: 0, end: 8, subtitle: "Goal from Sonny!"},
-		{file: "03.MOV", start: 8, end: 13, subtitle: ""},
-		{file: "04.MOV", start: 0, end: 0, subtitle: ""},
+		{file: "01.MOV", start: 8, end: 22, subtitle: "乌龟灵活跑位后接老汤助攻破门"},
+		{file: "02.MOV", start: 0, end: 7, subtitle: "老汤助攻乌龟门前推射"},
 	}
 
 	// Create ffmpeg command with output file.
@@ -34,7 +32,7 @@ func Example() {
 
 	// Add "opening.png" as ffmpeg input and get the input index.
 	// Add video stream of "opening.png"([0:v:0]) as op video chain's input.
-	op_v.AddStreamInput(cmd.AddInput("opening.png"), "v", 0)
+	op_v.AddInputByID(cmd.AddInput("opening.png"), "v", 0)
 
 	// Create op video filters.
 	fps := ffcmd.NewFilter("fps").Option("fps", 30)
@@ -49,7 +47,7 @@ func Example() {
 	op_v.Chain(fps).Chain(loop).Chain(scale).Chain(pad).Chain(format).Chain(subtitles).Chain(fade)
 
 	// Create op audio fiters.
-	aevalsrc := ffcmd.NewFilter("aevalsrc").Option("d", 3)
+	aevalsrc := ffcmd.NewFilter("aevalsrc").Option("exprs", 0).Option("d", 3)
 
 	// Chain ed audio filters.
 	op_a.Chain(aevalsrc)
@@ -62,9 +60,10 @@ func Example() {
 
 	// Add "ending.JPG" as ffmpeg input and get the input index.
 	// Add video stream of "ending.JPG"([1:v:0]) as ed's input.
-	ed_v.AddStreamInput(cmd.AddInput("ending.JPG"), "v", 0)
+	ed_v.AddInputByID(cmd.AddInput("ending.JPG"), "v", 0)
 
 	// Create ed video filters.
+	loop = ffcmd.NewFilter("loop").Option("loop", 150).Option("size", 1)
 	subtitles = ffcmd.NewFilter("subtitles").Option("filename", "ending.srt").Option("force_style", "'Fontsize=16'")
 	fade = ffcmd.NewFilter("fade").Option("t", "out").Option("st", 4).Option("d", 1)
 
@@ -72,7 +71,7 @@ func Example() {
 	ed_v.Chain(fps).Chain(loop).Chain(scale).Chain(pad).Chain(format).Chain(subtitles).Chain(fade)
 
 	// Create ed audio fiters.
-	aevalsrc = ffcmd.NewFilter("aevalsrc").Option("d", 5)
+	aevalsrc = ffcmd.NewFilter("aevalsrc").Option("exprs", 0).Option("d", 5)
 
 	// Chain ed audio filters.
 	ed_a.Chain(aevalsrc)
@@ -80,9 +79,9 @@ func Example() {
 	// Create concat filter chain.
 	concatFC := ffcmd.NewFilterChain("[outv][outa]")
 
-	// Add op video and audio filterchain's input as concat filterchain's input.
-	concatFC.AddInput(op_v.Output())
-	concatFC.AddInput(op_a.Output())
+	// Add op video and audio filterchain's output as concat filterchain's input.
+	concatFC.AddInputByOutput(op_v)
+	concatFC.AddInputByOutput(op_a)
 
 	// Segments count to concat.
 	// Initialized to 2: op + ed.
@@ -99,16 +98,16 @@ func Example() {
 		// Add video file as ffmpeg input and get the input index.
 		// Add video / audio stream of the file([X:v:0] / [X:a:0], X is the ffmpeg input id) as clip's input.
 		id := cmd.AddInput(c.file)
-		clip_v.AddStreamInput(id, "v", 0)
-		clip_a.AddStreamInput(id, "a", 0)
+		clip_v.AddInputByID(id, "v", 0)
+		clip_a.AddInputByID(id, "a", 0)
 
 		// Add clip video / audio filterchain to filtergraph.
 		cmd.Chain(clip_v)
 		cmd.Chain(clip_a)
 
 		// Add clip video / audio filter chain's output as concat filterchain's input.
-		concatFC.AddInputFromOutput(clip_v)
-		concatFC.AddInputFromOutput(clip_a)
+		concatFC.AddInputByOutput(clip_v)
+		concatFC.AddInputByOutput(clip_a)
 
 		// Increase segment count.
 		n += 1
@@ -122,15 +121,6 @@ func Example() {
 			// Chain trim and setpts filter.
 			clip_v.Chain(trim).Chain(setpts)
 
-			// Check if need to chain subtitles filter.
-			if c.subtitle != "" {
-				srtFile := strings.Replace(c.file, filepath.Ext(c.file), ".srt", -1)
-				subtitles := ffcmd.NewFilter("subtitles").Option("file", srtFile)
-
-				// Chain subtitles filter.
-				clip_v.Chain(subtitles)
-			}
-
 			// Create clip audio filters.
 			atrim := ffcmd.NewFilter("atrim").Option("start", c.start).Option("end", c.end)
 			asetpts := ffcmd.NewFilter("asetpts").Option("expr", "PTS-STARTPTS")
@@ -142,16 +132,16 @@ func Example() {
 		// Check if need to chain subtitles filter.
 		if c.subtitle != "" {
 			srtFile := strings.Replace(c.file, filepath.Ext(c.file), ".srt", -1)
-			subtitles := ffcmd.NewFilter("subtitles").Option("file", srtFile)
+			subtitles := ffcmd.NewFilter("subtitles").Option("filename", srtFile)
 
 			// Chain subtitles filter.
 			clip_v.Chain(subtitles)
 		}
 	}
 
-	// Add ed video and audio filterchain's input as concat filterchain's input.
-	concatFC.AddInput(ed_v.Output())
-	concatFC.AddInput(ed_a.Output())
+	// Add ed video and audio filterchain's output as concat filterchain's input.
+	concatFC.AddInputByOutput(ed_v)
+	concatFC.AddInputByOutput(ed_a)
 
 	// Create concat filters.
 	concat := ffcmd.NewFilter("concat").Option("n", n).Option("v", 1).Option("a", 1)
