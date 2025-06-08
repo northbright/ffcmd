@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+// HHMMSSToSec converts HH:MM:SS.ms to seconds.
 func HHMMSSToSec(hhmmss string) (float32, error) {
 	var sec float32
 
