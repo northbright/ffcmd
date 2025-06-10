@@ -111,11 +111,11 @@ type Cmd struct {
 	inputs          []string
 	output          string
 	fg              []*FilterChain
-	selectedStreams []string
+	selectedStreams map[string]struct{}
 }
 
 func New(output string) *Cmd {
-	return &Cmd{inputs: []string{}, output: output, fg: []*FilterChain{}}
+	return &Cmd{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{})}
 }
 
 // AddInput adds input and returns index of the input.
@@ -131,11 +131,16 @@ func (c *Cmd) Chain(fc *FilterChain) *Cmd {
 }
 
 func (c *Cmd) Map(stream string) {
-	c.selectedStreams = append(c.selectedStreams, stream)
+	if _, ok := c.selectedStreams[stream]; !ok {
+		c.selectedStreams[stream] = struct{}{}
+	}
 }
 
 func (c *Cmd) MapByID(inputID int, streamType string, streamID int) {
-	c.selectedStreams = append(c.selectedStreams, fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID))
+	stream := fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID)
+	if _, ok := c.selectedStreams[stream]; !ok {
+		c.selectedStreams[stream] = struct{}{}
+	}
 }
 
 func (c *Cmd) MapByOutput(fc *FilterChain) error {
@@ -146,7 +151,7 @@ func (c *Cmd) MapByOutput(fc *FilterChain) error {
 	}
 
 	for _, stream := range streams {
-		c.selectedStreams = append(c.selectedStreams, stream)
+		c.Map(stream)
 	}
 	return nil
 }
@@ -173,7 +178,7 @@ func (c *Cmd) String() (string, error) {
 
 	str += "\" \\\n"
 
-	for _, stream := range c.selectedStreams {
+	for stream, _ := range c.selectedStreams {
 		str += fmt.Sprintf("-map \"%s\" \\\n", stream)
 	}
 

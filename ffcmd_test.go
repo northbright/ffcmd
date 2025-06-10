@@ -152,6 +152,10 @@ func Example() {
 	// Add concat filterchain to filtergraph.
 	cmd.Chain(concatFC)
 
+	// Selected output streams.
+	// If none stream is selected, it'll auto select last filterchain's labeled outputs.
+	cmd.MapByOutput(concatFC)
+
 	str, err := cmd.String()
 	if err != nil {
 		fmt.Printf("cmd.String() error: %v", err)
