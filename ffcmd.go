@@ -2,48 +2,21 @@ package ffcmd
 
 import (
 	"fmt"
-	"regexp"
 )
-
-type option struct {
-	k string
-	v any
-}
-
-type Filter struct {
-	name    string
-	options []option
-}
-
-func NewFilter(name string) *Filter {
-	return &Filter{name: name, options: []option{}}
-}
-
-func (f *Filter) Option(k string, v any) *Filter {
-	f.options = append(f.options, option{k: k, v: v})
-	return f
-}
-
-func (f *Filter) String() string {
-	l := len(f.options)
-	str := fmt.Sprintf("%s=", f.name)
-	for i, option := range f.options {
-		str += fmt.Sprintf("%s=%v", option.k, option.v)
-		if i < l-1 {
-			str += ":"
-		}
-	}
-	return str
-}
 
 type FilterChain struct {
 	inputs  []any
-	output  string
-	filters []*Filter
+	outputs []string
+	filters []string
 }
 
-func NewFilterChain(output string) *FilterChain {
-	return &FilterChain{inputs: []any{}, output: output}
+type filterChainOutputData struct {
+	fc *FilterChain
+	id int
+}
+
+func NewFilterChain(outputs ...string) *FilterChain {
+	return &FilterChain{inputs: []any{}, outputs: outputs, filters: []string{}}
 }
 
 func (fc *FilterChain) AddInput(input string) {
@@ -54,35 +27,67 @@ func (fc *FilterChain) AddInputByID(inputID int, streamType string, streamID int
 	fc.inputs = append(fc.inputs, fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID))
 }
 
-func (fc *FilterChain) AddInputByOutput(fcOut *FilterChain) {
-	fc.inputs = append(fc.inputs, fcOut)
+func (fc *FilterChain) AddInputByOutput(fcOut *FilterChain, outputID int) {
+	fc.inputs = append(fc.inputs, &filterChainOutputData{fcOut, outputID})
 }
 
-func (fc *FilterChain) Inputs() string {
-	inputs := ""
+func (fc *FilterChain) Input(id int) string {
+	if id < 0 || id >= len(fc.inputs) {
+		return ""
+	}
+
+	switch vv := fc.inputs[id].(type) {
+	case string:
+		return vv
+	case *filterChainOutputData:
+		fc := vv.fc
+		id := vv.id
+		return fc.Output(id)
+	default:
+		return ""
+	}
+}
+
+func (fc *FilterChain) Inputs() []string {
+	var inputs []string
+
 	for _, in := range fc.inputs {
 		switch vv := in.(type) {
 		case string:
-			inputs += vv
-		case *FilterChain:
-			inputs += vv.Output()
+			inputs = append(inputs, vv)
+		case *filterChainOutputData:
+			fc := vv.fc
+			id := vv.id
+			input := fc.Output(id)
+			inputs = append(inputs, input)
 		default:
 		}
 	}
 	return inputs
 }
 
-func (fc *FilterChain) Output() string {
+func (fc *FilterChain) Output(id int) string {
 	if len(fc.filters) == 0 {
-		return fc.Inputs()
+		return fc.Input(id)
 	} else {
-		return fc.output
+		if id < 0 || id >= len(fc.outputs) {
+			return ""
+		}
+		return fc.outputs[id]
 	}
 }
 
-func (fc *FilterChain) Chain(f *Filter) *FilterChain {
-	if f != nil {
-		fc.filters = append(fc.filters, f)
+func (fc *FilterChain) Outputs() []string {
+	if len(fc.filters) == 0 {
+		return fc.Inputs()
+	} else {
+		return fc.outputs
+	}
+}
+
+func (fc *FilterChain) Chain(filter string) *FilterChain {
+	if filter != "" {
+		fc.filters = append(fc.filters, filter)
 	}
 	return fc
 }
@@ -95,15 +100,21 @@ func (fc *FilterChain) String() string {
 		return ""
 	}
 
-	str := fc.Inputs()
-	for i, f := range fc.filters {
-		str += f.String()
+	str := ""
+	for _, input := range fc.Inputs() {
+		str += input
+	}
+
+	for i, filter := range fc.filters {
+		str += filter
 		if i < l-1 {
 			str += ","
 		}
 	}
 
-	str += fc.Output()
+	for _, output := range fc.Outputs() {
+		str += output
+	}
 	return str
 }
 
@@ -143,17 +154,15 @@ func (c *Cmd) MapByID(inputID int, streamType string, streamID int) {
 	}
 }
 
-func (c *Cmd) MapByOutput(fc *FilterChain) error {
-	re := regexp.MustCompile(`\[\w+\]`)
-	streams := re.FindAllString(fc.Output(), -1)
-	if len(streams) == 0 {
-		fmt.Errorf("no ouput found in last filterchain")
-	}
+func (c *Cmd) MapByOutput(fc *FilterChain, id int) {
+	stream := fc.Output(id)
+	c.Map(stream)
+}
 
-	for _, stream := range streams {
+func (c *Cmd) MapByOutputs(fc *FilterChain) {
+	for _, stream := range fc.Outputs() {
 		c.Map(stream)
 	}
-	return nil
 }
 
 func (c *Cmd) String() (string, error) {
@@ -167,12 +176,17 @@ func (c *Cmd) String() (string, error) {
 
 	l := len(c.fg)
 	for i, fc := range c.fg {
-		str += fc.String()
+		s := fc.String()
+		if s == "" {
+			continue
+		}
+
+		str += s
 		if i < l-1 {
 			str += ";\n"
 		} else {
-			// Complex filtergraph output streams with labeled pads must be mapped once and exactly once.
-			c.MapByOutput(fc)
+			// Complex filtergraph outputs streams with labeled pads must be mapped once and exactly once.
+			c.MapByOutputs(fc)
 		}
 	}
 
