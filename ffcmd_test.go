@@ -126,9 +126,11 @@ func Example() {
 
 		// Check if need to chain subtitles filter.
 		if c.subtitle != "" {
-			sub := ffcmd.Sub{Text: c.subtitle, Start: "00:00:00,000", End: "00:00:07,000"}
-			srt, _ := ffcmd.NewSRT(c.file, []ffcmd.Sub{sub})
+			sub, _ := ffcmd.NewSub(c.subtitle, "00:00:00,000", "00:00:07,000")
+			srt, _ := ffcmd.NewSRT(c.file, sub)
+			// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
 			cmd.AddPreCmd(srt.CreateCmd())
+			// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
 			cmd.AddPostCmd(srt.RemoveCmd())
 
 			subtitles := fmt.Sprintf("subtitles='%s'", srt.Filename())

@@ -12,12 +12,30 @@ type Sub struct {
 	End   string
 }
 
-type SRT struct {
-	filename string
-	subs     []Sub
+func NewSub(text, start, end string) (*Sub, error) {
+	if text == "" {
+		return nil, fmt.Errorf("empty subtitle text")
+	}
+
+	tsStart, err := NewTimestamp(start)
+	if err != nil {
+		return nil, fmt.Errorf("create timestamp for start error: %v", err)
+	}
+
+	tsEnd, err := NewTimestamp(end)
+	if err != nil {
+		return nil, fmt.Errorf("create timestamp for end error: %v", err)
+	}
+
+	return &Sub{Text: text, Start: tsStart.StringForSRT(), End: tsEnd.StringForSRT()}, nil
 }
 
-func NewSRT(videoFile string, subs []Sub) (*SRT, error) {
+type SRT struct {
+	filename string
+	subs     []*Sub
+}
+
+func NewSRT(videoFile string, subs ...*Sub) (*SRT, error) {
 	if videoFile == "" {
 		return nil, fmt.Errorf("empty video filename")
 	}
