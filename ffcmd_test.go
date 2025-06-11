@@ -2,8 +2,6 @@ package ffcmd_test
 
 import (
 	"fmt"
-	"path/filepath"
-	"strings"
 
 	"github.com/northbright/ffcmd"
 )
@@ -19,8 +17,6 @@ func Example() {
 	clips := []clip{
 		{file: "01.MOV", start: 8, end: 22, subtitle: "乌龟灵活跑位后接老汤助攻破门"},
 		{file: "02.MOV", start: 0, end: 7, subtitle: "老汤助攻乌龟门前推射"},
-		{file: "03.MOV", start: 0, end: 0, subtitle: "乌龟灵活跑位后接老汤助攻破门"},
-		{file: "04.MOV", start: 0, end: 0, subtitle: ""},
 	}
 
 	// Create ffmpeg command with output file.
@@ -130,8 +126,12 @@ func Example() {
 
 		// Check if need to chain subtitles filter.
 		if c.subtitle != "" {
-			srtFile := strings.Replace(c.file, filepath.Ext(c.file), ".srt", -1)
-			subtitles := fmt.Sprintf("subtitles=%s", srtFile)
+			sub := ffcmd.Sub{Text: c.subtitle, Start: "00:00:00,000", End: "00:00:07,000"}
+			srt, _ := ffcmd.NewSRT(c.file, []ffcmd.Sub{sub})
+			cmd.AddPreCmd(srt.CreateCmd())
+			cmd.AddPostCmd(srt.RemoveCmd())
+
+			subtitles := fmt.Sprintf("subtitles='%s'", srt.Filename())
 
 			// Chain subtitles filter.
 			clip_v.Chain(subtitles)

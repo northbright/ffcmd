@@ -123,6 +123,8 @@ type Cmd struct {
 	output          string
 	fg              []*FilterChain
 	selectedStreams map[string]struct{}
+	preCmds         []string
+	postCmds        []string
 }
 
 func New(output string) *Cmd {
@@ -134,6 +136,18 @@ func (c *Cmd) AddInput(in string) int {
 	id := len(c.inputs)
 	c.inputs = append(c.inputs, in)
 	return id
+}
+
+func (c *Cmd) AddPreCmd(cmd string) {
+	if cmd != "" {
+		c.preCmds = append(c.preCmds, cmd)
+	}
+}
+
+func (c *Cmd) AddPostCmd(cmd string) {
+	if cmd != "" {
+		c.postCmds = append(c.postCmds, cmd)
+	}
 }
 
 func (c *Cmd) Chain(fc *FilterChain) *Cmd {
@@ -166,7 +180,12 @@ func (c *Cmd) MapByOutputs(fc *FilterChain) {
 }
 
 func (c *Cmd) String() (string, error) {
-	str := "ffmpeg \\\n"
+	str := ""
+	for _, cmd := range c.preCmds {
+		str += fmt.Sprintf("%s && \\\n", cmd)
+	}
+
+	str += "ffmpeg \\\n"
 
 	for _, in := range c.inputs {
 		str += fmt.Sprintf("-i \"%s\" \\\n", in)
@@ -197,6 +216,10 @@ func (c *Cmd) String() (string, error) {
 	}
 
 	str += c.output
+
+	for _, cmd := range c.postCmds {
+		str += fmt.Sprintf("\n&& %s", cmd)
+	}
 
 	return str, nil
 }

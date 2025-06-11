@@ -7,9 +7,9 @@ import (
 )
 
 type Sub struct {
-	text  string
-	start string
-	end   string
+	Text  string
+	Start string
+	End   string
 }
 
 type SRT struct {
@@ -35,16 +35,20 @@ func NewSRTForTrimedVideo(videoFile string, trimStart, trimEnd, subtitle string)
 	return nil, nil
 }
 
+func (srt *SRT) Filename() string {
+	return srt.filename
+}
+
 func (srt *SRT) CreateCmd() string {
-	cmd := `echo -ne "`
+	cmd := "echo -ne \" \\\n"
 	for i, sub := range srt.subs {
-		cmd += fmt.Sprintf("%d\n%s --> %s\n%s\n", i+1, sub.start, sub.end, sub.text)
+		cmd += fmt.Sprintf("%d\n%s --> %s\n\\\n%s\\\n", i+1, sub.Start, sub.End, sub.Text)
 	}
-	cmd += fmt.Sprintf("\" > %s.srt", srt.filename)
+	cmd += fmt.Sprintf("\" > \"%s\"", srt.filename)
 	return cmd
 }
 
 func (srt *SRT) RemoveCmd() string {
-	cmd := fmt.Sprintf(`rm "%s"`, srt.filename)
+	cmd := fmt.Sprintf("rm \"%s\"", srt.filename)
 	return cmd
 }
