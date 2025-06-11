@@ -182,7 +182,7 @@ func (c *Cmd) MapByOutputs(fc *FilterChain) {
 func (c *Cmd) String() (string, error) {
 	str := ""
 	for _, cmd := range c.preCmds {
-		str += fmt.Sprintf("%s && \\\n", cmd)
+		str += fmt.Sprintf(`%s && `, cmd)
 	}
 
 	str += "ffmpeg \\\n"
@@ -218,7 +218,7 @@ func (c *Cmd) String() (string, error) {
 	str += c.output
 
 	for _, cmd := range c.postCmds {
-		str += fmt.Sprintf("\n&& %s", cmd)
+		str += fmt.Sprintf(` && %s`, cmd)
 	}
 
 	return str, nil

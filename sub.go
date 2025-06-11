@@ -40,11 +40,11 @@ func (srt *SRT) Filename() string {
 }
 
 func (srt *SRT) CreateCmd() string {
-	cmd := "echo -ne \" \\\n"
+	cmd := `echo -ne "`
 	for i, sub := range srt.subs {
-		cmd += fmt.Sprintf("%d\n%s --> %s\n\\\n%s\\\n", i+1, sub.Start, sub.End, sub.Text)
+		cmd += fmt.Sprintf(`%d\n%s --> %s\n%s`, i+1, sub.Start, sub.End, sub.Text)
 	}
-	cmd += fmt.Sprintf("\" > \"%s\"", srt.filename)
+	cmd += fmt.Sprintf(`" > "%s"`, srt.filename)
 	return cmd
 }
 
