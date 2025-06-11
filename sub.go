@@ -49,10 +49,6 @@ func NewSRT(videoFile string, subs ...*Sub) (*SRT, error) {
 	return &SRT{filename: filename, subs: subs}, nil
 }
 
-func NewSRTForTrimedVideo(videoFile string, trimStart, trimEnd, subtitle string) (*SRT, error) {
-	return nil, nil
-}
-
 func (srt *SRT) Filename() string {
 	return srt.filename
 }
