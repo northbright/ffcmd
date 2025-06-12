@@ -118,83 +118,83 @@ func (fc *FilterChain) String() string {
 	return str
 }
 
-type Cmd struct {
+type FFmpeg struct {
 	inputs          []string
 	output          string
 	fg              []*FilterChain
 	selectedStreams map[string]struct{}
-	preCmds         []string
-	postCmds        []string
+	preCmds         []Cmd
+	postCmds        []Cmd
 }
 
-func New(output string) *Cmd {
-	return &Cmd{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{})}
+func New(output string) *FFmpeg {
+	return &FFmpeg{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{})}
 }
 
 // AddInput adds input and returns index of the input.
-func (c *Cmd) AddInput(in string) int {
-	id := len(c.inputs)
-	c.inputs = append(c.inputs, in)
+func (ff *FFmpeg) AddInput(in string) int {
+	id := len(ff.inputs)
+	ff.inputs = append(ff.inputs, in)
 	return id
 }
 
-func (c *Cmd) AddPreCmd(cmd string) {
-	if cmd != "" {
-		c.preCmds = append(c.preCmds, cmd)
+func (ff *FFmpeg) AddPreCmd(cmd Cmd) {
+	ff.preCmds = append(ff.preCmds, cmd)
+}
+
+func (ff *FFmpeg) AddPostCmd(cmd Cmd) {
+	ff.postCmds = append(ff.postCmds, cmd)
+}
+
+func (ff *FFmpeg) Chain(fc *FilterChain) *FFmpeg {
+	ff.fg = append(ff.fg, fc)
+	return ff
+}
+
+func (ff *FFmpeg) Map(stream string) {
+	if _, ok := ff.selectedStreams[stream]; !ok {
+		ff.selectedStreams[stream] = struct{}{}
 	}
 }
 
-func (c *Cmd) AddPostCmd(cmd string) {
-	if cmd != "" {
-		c.postCmds = append(c.postCmds, cmd)
-	}
-}
-
-func (c *Cmd) Chain(fc *FilterChain) *Cmd {
-	c.fg = append(c.fg, fc)
-	return c
-}
-
-func (c *Cmd) Map(stream string) {
-	if _, ok := c.selectedStreams[stream]; !ok {
-		c.selectedStreams[stream] = struct{}{}
-	}
-}
-
-func (c *Cmd) MapByID(inputID int, streamType string, streamID int) {
+func (ff *FFmpeg) MapByID(inputID int, streamType string, streamID int) {
 	stream := fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID)
-	if _, ok := c.selectedStreams[stream]; !ok {
-		c.selectedStreams[stream] = struct{}{}
+	if _, ok := ff.selectedStreams[stream]; !ok {
+		ff.selectedStreams[stream] = struct{}{}
 	}
 }
 
-func (c *Cmd) MapByOutput(fc *FilterChain, id int) {
+func (ff *FFmpeg) MapByOutput(fc *FilterChain, id int) {
 	stream := fc.Output(id)
-	c.Map(stream)
+	ff.Map(stream)
 }
 
-func (c *Cmd) MapByOutputs(fc *FilterChain) {
+func (ff *FFmpeg) MapByOutputs(fc *FilterChain) {
 	for _, stream := range fc.Outputs() {
-		c.Map(stream)
+		ff.Map(stream)
 	}
 }
 
-func (c *Cmd) String() (string, error) {
+func (ff *FFmpeg) String() (string, error) {
 	str := ""
-	for _, cmd := range c.preCmds {
-		str += fmt.Sprintf(`%s && `, cmd)
+	for _, cmd := range ff.preCmds {
+		s, err := cmd.String()
+		if err != nil {
+			return "", fmt.Errorf("add pre-cmd error: %v", err)
+		}
+		str += fmt.Sprintf(`%s && `, s)
 	}
 
 	str += "ffmpeg \\\n"
 
-	for _, in := range c.inputs {
+	for _, in := range ff.inputs {
 		str += fmt.Sprintf("-i \"%s\" \\\n", in)
 	}
 
 	str += "-filter_complex \" \\\n"
 
-	l := len(c.fg)
-	for i, fc := range c.fg {
+	l := len(ff.fg)
+	for i, fc := range ff.fg {
 		s := fc.String()
 		if s == "" {
 			continue
@@ -205,20 +205,24 @@ func (c *Cmd) String() (string, error) {
 			str += ";\n"
 		} else {
 			// Complex filtergraph outputs streams with labeled pads must be mapped once and exactly once.
-			c.MapByOutputs(fc)
+			ff.MapByOutputs(fc)
 		}
 	}
 
 	str += "\" \\\n"
 
-	for stream, _ := range c.selectedStreams {
+	for stream, _ := range ff.selectedStreams {
 		str += fmt.Sprintf("-map \"%s\" \\\n", stream)
 	}
 
-	str += c.output
+	str += ff.output
 
-	for _, cmd := range c.postCmds {
-		str += fmt.Sprintf(` && %s`, cmd)
+	for _, cmd := range ff.postCmds {
+		s, err := cmd.String()
+		if err != nil {
+			return "", fmt.Errorf("add post-cmd error: %v", err)
+		}
+		str += fmt.Sprintf(` && %s`, s)
 	}
 
 	return str, nil
