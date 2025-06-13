@@ -4,33 +4,44 @@ import (
 	"fmt"
 )
 
+// FilterChain represents the filterchain of ffmpeg.
 type FilterChain struct {
 	inputs  []any
 	outputs []string
 	filters []string
 }
 
+// filterChainOutputData stores the filterchan and the output ID to generate output label as another filterchain's input.
 type filterChainOutputData struct {
 	fc *FilterChain
 	id int
 }
 
+// NewFilterChain returns a filterchain by pre-defined outputs(labels) in the "[OUTPUT_LABEL]" format.
 func NewFilterChain(outputs ...string) *FilterChain {
 	return &FilterChain{inputs: []any{}, outputs: outputs, filters: []string{}}
 }
 
+// AddInput adds raw string(label) as the input.
 func (fc *FilterChain) AddInput(input string) {
 	fc.inputs = append(fc.inputs, input)
 }
 
+// AddInputByID adds input by specifying input ID, stream type and ID in the stream(e.g. "[0:v:0]", [0:a:1]").
+// inputID: 0-based input ID.
+// streamType: "v" for video, "a" for audio, "s" for subtitles, "d" for data. See ffmpeg's doc for more.
+// streamID: index of the stream for the stream type.
 func (fc *FilterChain) AddInputByID(inputID int, streamType string, streamID int) {
 	fc.inputs = append(fc.inputs, fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID))
 }
 
+// AddInputByOutput adds another filterchain's output as input.
+// It's useful when another filterchain's output is generated dynamically.
 func (fc *FilterChain) AddInputByOutput(fcOut *FilterChain, outputID int) {
 	fc.inputs = append(fc.inputs, &filterChainOutputData{fcOut, outputID})
 }
 
+// Input returns the input string by 0-based index.
 func (fc *FilterChain) Input(id int) string {
 	if id < 0 || id >= len(fc.inputs) {
 		return ""
@@ -48,6 +59,7 @@ func (fc *FilterChain) Input(id int) string {
 	}
 }
 
+// Inputs returns all inputs.
 func (fc *FilterChain) Inputs() []string {
 	var inputs []string
 
@@ -66,6 +78,7 @@ func (fc *FilterChain) Inputs() []string {
 	return inputs
 }
 
+// Output returns the output by 0-based index.
 func (fc *FilterChain) Output(id int) string {
 	if len(fc.filters) == 0 {
 		return fc.Input(id)
@@ -77,6 +90,7 @@ func (fc *FilterChain) Output(id int) string {
 	}
 }
 
+// Outputs returns all outputs.
 func (fc *FilterChain) Outputs() []string {
 	if len(fc.filters) == 0 {
 		return fc.Inputs()
@@ -85,6 +99,7 @@ func (fc *FilterChain) Outputs() []string {
 	}
 }
 
+// Chain chains filter and returns a filterchain to chain next filter(e.g. fc.Chain("fps=30").Chain("scale=1280:720"))
 func (fc *FilterChain) Chain(filter string) *FilterChain {
 	if filter != "" {
 		fc.filters = append(fc.filters, filter)
@@ -92,6 +107,7 @@ func (fc *FilterChain) Chain(filter string) *FilterChain {
 	return fc
 }
 
+// String returns the filterchain's string for ffmpeg command.
 func (fc *FilterChain) String() string {
 	l := len(fc.filters)
 
@@ -118,6 +134,7 @@ func (fc *FilterChain) String() string {
 	return str
 }
 
+// FFmpeg represents the ffmpeg command.
 type FFmpeg struct {
 	inputs          []string
 	output          string
@@ -127,6 +144,7 @@ type FFmpeg struct {
 	postCmds        []Cmd
 }
 
+// New returns a new ffmpeg command.
 func New(output string) *FFmpeg {
 	return &FFmpeg{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{})}
 }
@@ -138,25 +156,31 @@ func (ff *FFmpeg) AddInput(in string) int {
 	return id
 }
 
+// AddPreCmd adds the command(set-up) to run before ffmpeg.
 func (ff *FFmpeg) AddPreCmd(cmd Cmd) {
 	ff.preCmds = append(ff.preCmds, cmd)
 }
 
+// AddPostCmd adds the command(clean-up) to run after ffmpeg.
 func (ff *FFmpeg) AddPostCmd(cmd Cmd) {
 	ff.postCmds = append(ff.postCmds, cmd)
 }
 
+// Chain chains filterchain and return a ffmpeg command to chain next filterchain.
+// e.g. ff.Chain(videoFC).Chain(audioFC).Chain(ConcatFC).
 func (ff *FFmpeg) Chain(fc *FilterChain) *FFmpeg {
 	ff.fg = append(ff.fg, fc)
 	return ff
 }
 
+// Map selects stream as ffmpeg output.
 func (ff *FFmpeg) Map(stream string) {
 	if _, ok := ff.selectedStreams[stream]; !ok {
 		ff.selectedStreams[stream] = struct{}{}
 	}
 }
 
+// MapByID selects stream by input index, stream type and index of stream as ffmpeg output.
 func (ff *FFmpeg) MapByID(inputID int, streamType string, streamID int) {
 	stream := fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID)
 	if _, ok := ff.selectedStreams[stream]; !ok {
@@ -164,17 +188,20 @@ func (ff *FFmpeg) MapByID(inputID int, streamType string, streamID int) {
 	}
 }
 
+// MapByOutput selects the output stream of filterchain by index as ffmpeg output dynamically.
 func (ff *FFmpeg) MapByOutput(fc *FilterChain, id int) {
 	stream := fc.Output(id)
 	ff.Map(stream)
 }
 
+// MapByOutputs selects all the output streams of filterchain as ffmpeg outputs dynamically.
 func (ff *FFmpeg) MapByOutputs(fc *FilterChain) {
 	for _, stream := range fc.Outputs() {
 		ff.Map(stream)
 	}
 }
 
+// String returns the ffmpeg command string to run.
 func (ff *FFmpeg) String() (string, error) {
 	str := ""
 	for _, cmd := range ff.preCmds {

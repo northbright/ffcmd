@@ -15,6 +15,7 @@ func Example() {
 		Start    string
 		End      string
 		Subtitle string
+		FontSize int
 	}
 
 	type ImageClip struct {
@@ -22,6 +23,7 @@ func Example() {
 		Duration        int
 		FadeOutDuration int
 		Subtitle        string
+		FontSize        int
 	}
 
 	type Output struct {
@@ -36,19 +38,21 @@ func Example() {
 		Duration:        3,
 		FadeOutDuration: 1,
 		Subtitle:        "Good Times with Maomi & Mimao",
+		FontSize:        15,
 	}
 
 	ed := ImageClip{
 		File:            "ed.jpg",
 		Duration:        3,
 		FadeOutDuration: 1,
-		Subtitle:        "Mimao likes lying on father's bed...😂",
+		Subtitle:        "Mimao likes lying on father's bed...😂\\nMusic by penguinmusic: Better Day",
+		FontSize:        13,
 	}
 
 	clips := []Clip{
-		{File: "01.MP4", Start: "", End: "00:00:05", Subtitle: "Mido's tickling Mimao and she's enjoying..."},
-		{File: "02.MOV", Start: "", End: "", Subtitle: "Mimao's playing the toy."},
-		{File: "03.MOV", Start: "00:00:01", End: "00:00:09", Subtitle: "It's hard to brush Maomi's teeth..."},
+		{File: "01.MP4", Start: "", End: "00:00:05", Subtitle: "Mido's tickling Mimao and he's enjoying...", FontSize: 13},
+		{File: "02.MOV", Start: "", End: "", Subtitle: "Mimao's playing the toy.", FontSize: 13},
+		{File: "03.MOV", Start: "00:00:01", End: "00:00:09", Subtitle: "It's hard to brush Maomi's teeth...", FontSize: 13},
 	}
 
 	out := Output{
@@ -98,7 +102,7 @@ func Example() {
 		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
 		ffmpeg.AddPostCmd(removeCmd)
 
-		subtitles := fmt.Sprintf("subtitles='%s'", srtFile)
+		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, op.FontSize)
 
 		// Chain subtitles filter.
 		op_v.Chain(subtitles)
@@ -153,7 +157,7 @@ func Example() {
 		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
 		ffmpeg.AddPostCmd(removeCmd)
 
-		subtitles := fmt.Sprintf("subtitles='%s'", srtFile)
+		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, ed.FontSize)
 
 		// Chain subtitles filter.
 		ed_v.Chain(subtitles)
@@ -267,7 +271,7 @@ func Example() {
 			// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
 			ffmpeg.AddPostCmd(removeCmd)
 
-			subtitles := fmt.Sprintf("subtitles='%s'", srtFile)
+			subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, c.FontSize)
 
 			// Chain subtitles filter.
 			clip_v.Chain(subtitles)
@@ -299,7 +303,7 @@ func Example() {
 	ffmpeg.Chain(concatFC)
 
 	// Add BGM as command input.
-	id := ffmpeg.AddInput("bgm.m4a")
+	id := ffmpeg.AddInput("penguinmusic-Better Day.mp3")
 
 	// Create filterchain to merge BGM and original audio streams.
 	bgmFC := ffcmd.NewFilterChain("[outa_merged_bgm]")
@@ -332,23 +336,26 @@ func Example() {
 	fmt.Println(str)
 
 	// Output:
-	// echo -ne "1\n00:00:08,000 --> 00:00:22,000\nGoal from Wugui\!" > "01.srt" && ffprobe -v error -select_streams v:0 -show_entries stream.Duration -of csv=s=,:p=0 "02.MOV" | awk -F. '{ print $1 }' | read sec; hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" hh mm ss; echo -ne "1\n00:00:00,000 --> $end\nSonny passed the ball to Wugui and Goal\!\!" > "02.srt" && ffmpeg \
-	// -i "opening.png" \
-	// -i "ending.JPG" \
-	// -i "01.MOV" \
+	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:05,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && ffprobe -v error -select_streams v:0 -show_entries stream=duration -of csv=s=,:p=0 "02.MOV" | awk -F. '{ print $1 }' | read sec; hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" hh mm ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:01,000 --> 00:00:09,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && ffmpeg \
+	// -i "op.jpg" \
+	// -i "ed.jpg" \
+	// -i "01.MP4" \
 	// -i "02.MOV" \
-	// -i "./bgm.m4a" \
+	// -i "03.MOV" \
+	// -i "penguinmusic-Better Day.mp3" \
 	// -filter_complex " \
-	// [0:v:0]fps=30,loop=loop=90:size=1,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=pix_fmts=yuv420p,subtitles=opening.srt:force_style='Fontsize=16',fade=t=out:st=2:d=1[op_v];
+	// [0:v:0]fps=30,loop=loop=90:size=1,scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,format=pix_fmts=yuv420p,subtitles='op.srt':force_style='Fontsize=15',fade=t=out:st=2:d=1[op_v];
 	// aevalsrc=0:d=3[op_a];
-	// [1:v:0]fps=30,loop=loop=150:size=1,scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:(oh-ih)/2,format=pix_fmts=yuv420p,subtitles=ending.srt:force_style='Fontsize=16',fade=t=out:st=4:d=1[ed_v];
-	// aevalsrc=0:d=5[ed_a];
-	// [2:v:0]trim=start=8.000:end=22.000,setpts=PTS-STARTPTS,subtitles='01.srt'[clip_00_v];
-	// [2:a:0]atrim=start=8.000:end=22.000,asetpts=PTS-STARTPTS[clip_00_a];
-	// [3:v:0]subtitles='02.srt'[clip_01_v];
-	// [op_v][op_a][clip_00_v][clip_00_a][clip_01_v][3:a:0][ed_v][ed_a]concat=n=4:v=1:a=1[outv][outa];
-	// [4:a:0][outa]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[outa_merged_bgm]" \
+	// [1:v:0]fps=30,loop=loop=90:size=1,scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,format=pix_fmts=yuv420p,subtitles='ed.srt':force_style='Fontsize=13',fade=t=out:st=2:d=1[ed_v];
+	// aevalsrc=0:d=3[ed_a];
+	// [2:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=end=5.000,setpts=PTS-STARTPTS,subtitles='01.srt':force_style='Fontsize=13'[clip_00_v];
+	// [2:a:0]atrim=end=5.000,asetpts=PTS-STARTPTS[clip_00_a];
+	// [3:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,subtitles='02.srt':force_style='Fontsize=13'[clip_01_v];
+	// [4:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=1.000:end=9.000,setpts=PTS-STARTPTS,subtitles='03.srt':force_style='Fontsize=13'[clip_02_v];
+	// [4:a:0]atrim=start=1.000:end=9.000,asetpts=PTS-STARTPTS[clip_02_a];
+	// [op_v][op_a][clip_00_v][clip_00_a][clip_01_v][3:a:0][clip_02_v][clip_02_a][ed_v][ed_a]concat=n=5:v=1:a=1[outv][outa];
+	// [5:a:0][outa]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[outa_merged_bgm]" \
 	// -map "[outv]" \
 	// -map "[outa_merged_bgm]" \
-	// output.mp4 && rm "01.srt" && rm "02.srt"
+	// output.mp4 && rm "op.srt" && rm "ed.srt" && rm "01.srt" && rm "02.srt" && rm "03.srt"
 }
