@@ -20,7 +20,22 @@ func ExampleTimestamp() {
 			log.Printf("NewTimestamp() error: %v", err)
 			return
 		}
-		fmt.Printf("%s -> String(): %s, Second(): %s\n", str, ts.String(), ts.Second())
+		fmt.Printf("%s -> String(): %s, StringForSRT(): %s, Second(): %s\n", str, ts.String(), ts.StringForSRT(), ts.Second())
+	}
+
+	fArr := []float32{
+		0.0,
+		3.14,
+		3882.46000,
+	}
+
+	for _, f := range fArr {
+		ts, err := ffcmd.NewTimestampFromSecond(f)
+		if err != nil {
+			log.Printf("NewTimestampFromSecond() error: %v", err)
+			return
+		}
+		fmt.Printf("%f -> String(): %s, StringForSRT(): %s, Second(): %s\n", f, ts.String(), ts.StringForSRT(), ts.Second())
 	}
 
 	// Output:

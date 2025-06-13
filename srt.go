@@ -28,6 +28,22 @@ func NewCreateOneSubSRTCmd(srtFile, videoFile, text, start, end string) (*Create
 	return &CreateOneSubSRTCmd{srtFile: srtFile, videoFile: videoFile, text: text, start: start, end: end}, nil
 }
 
+func NewCreateOneSubSRTCmdForImageClip(srtFile, text string, duration float32) (*CreateOneSubSRTCmd, error) {
+	if duration <= 0 {
+		return nil, fmt.Errorf("invalid duration")
+	}
+
+	start := "00:00:00,000"
+
+	ts, err := NewTimestampFromSecond(duration)
+	if err != nil {
+		return nil, fmt.Errorf("NewTimestampFromSecond() error: %v", err)
+	}
+	end := ts.StringForSRT()
+
+	return NewCreateOneSubSRTCmd(srtFile, "", text, start, end)
+}
+
 func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 	var start, end string
 	str := ""
@@ -40,7 +56,7 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 			fmt.Printf("cmd.start: %s\n", cmd.start)
 			return "", fmt.Errorf("invalid start time format")
 		}
-		start = ts.String()
+		start = ts.StringForSRT()
 	}
 
 	if cmd.end == "" {
@@ -54,7 +70,7 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 		if err != nil {
 			return "", fmt.Errorf("invalid end time format")
 		}
-		end = ts.String()
+		end = ts.StringForSRT()
 
 		str = fmt.Sprintf(`echo -ne "1\n%s --> %s\n%s" > "%s"`, start, end, cmd.text, cmd.srtFile)
 	}
