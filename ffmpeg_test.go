@@ -102,9 +102,8 @@ func Example() {
 		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
 		ffmpeg.AddPostCmd(removeCmd)
 
+		// Create and chain subtitles filter.
 		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, op.FontSize)
-
-		// Chain subtitles filter.
 		op_v.Chain(subtitles)
 	}
 
@@ -157,9 +156,8 @@ func Example() {
 		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
 		ffmpeg.AddPostCmd(removeCmd)
 
+		// Create and chain subtitles filter.
 		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, ed.FontSize)
-
-		// Chain subtitles filter.
 		ed_v.Chain(subtitles)
 	}
 
@@ -271,9 +269,8 @@ func Example() {
 			// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
 			ffmpeg.AddPostCmd(removeCmd)
 
+			// Create and chain subtitles filter.
 			subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, c.FontSize)
-
-			// Chain subtitles filter.
 			clip_v.Chain(subtitles)
 		}
 
