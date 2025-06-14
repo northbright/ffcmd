@@ -2,6 +2,7 @@ package ffcmd
 
 import (
 	"fmt"
+	"sort"
 )
 
 // FilterChain represents the filterchain of ffmpeg.
@@ -142,11 +143,15 @@ type FFmpeg struct {
 	selectedStreams map[string]struct{}
 	preCmds         []Cmd
 	postCmds        []Cmd
+	overwrite       bool
 }
 
 // New returns a new ffmpeg command.
-func New(output string) *FFmpeg {
-	return &FFmpeg{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{})}
+// output: ffmpeg output(e.g. "output.mp4")
+// overwrite: if overwrite output when run ffmpeg command.
+// It'll failed to generate output if output exists and overwrite is set to false.
+func New(output string, overwrite bool) *FFmpeg {
+	return &FFmpeg{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
 }
 
 // AddInput adds input and returns index of the input.
@@ -212,6 +217,11 @@ func (ff *FFmpeg) String() (string, error) {
 		str += fmt.Sprintf(`%s && `, s)
 	}
 
+	// Check if overwrite output.
+	if ff.overwrite {
+		str += `echo "y" | `
+	}
+
 	str += "ffmpeg \\\n"
 
 	for _, in := range ff.inputs {
@@ -238,7 +248,14 @@ func (ff *FFmpeg) String() (string, error) {
 
 	str += "\" \\\n"
 
+	// sort streams by names.
+	var selectedStreams []string
 	for stream, _ := range ff.selectedStreams {
+		selectedStreams = append(selectedStreams, stream)
+	}
+	sort.Strings(selectedStreams)
+
+	for _, stream := range selectedStreams {
 		str += fmt.Sprintf("-map \"%s\" \\\n", stream)
 	}
 
@@ -253,4 +270,13 @@ func (ff *FFmpeg) String() (string, error) {
 	}
 
 	return str, nil
+}
+
+func (ff *FFmpeg) Run(dir string, fn ReadOutputFunc) error {
+	str, err := ff.String()
+	if err != nil {
+		return fmt.Errorf("ff.String() error: %v", err)
+	}
+
+	return RunCmd(dir, str, fn)
 }

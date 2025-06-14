@@ -2,6 +2,7 @@ package ffcmd_test
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"path/filepath"
 	"strings"
@@ -63,7 +64,7 @@ func Example() {
 	}
 
 	// Create ffmpeg command with output file.
-	ffmpeg := ffcmd.New("output.mp4")
+	ffmpeg := ffcmd.New("output.mp4", true)
 
 	// Create op video filterchain.
 	op_v := ffcmd.NewFilterChain("[op_v]")
@@ -261,13 +262,15 @@ func Example() {
 			// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
 			ffmpeg.AddPreCmd(createCmd)
 
-			removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
-			if err != nil {
-				log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
-				return
-			}
-			// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-			ffmpeg.AddPostCmd(removeCmd)
+			/*
+				removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
+				if err != nil {
+					log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
+					return
+				}
+				// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
+				ffmpeg.AddPostCmd(removeCmd)
+			*/
 
 			// Create and chain subtitles filter.
 			subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, c.FontSize)
@@ -332,8 +335,24 @@ func Example() {
 
 	fmt.Println(str)
 
+	// Run
+	if err = ffmpeg.Run("./examples", func(stdout, stderr io.ReadCloser) error {
+		buf, _ := io.ReadAll(stdout)
+		log.Printf("stdout:\n%s\n", buf)
+
+		buf, _ = io.ReadAll(stderr)
+		log.Printf("stderr:\n%s\n", buf)
+
+		return nil
+	}); err != nil {
+		log.Printf("ffmpeg.Run() error: %v", err)
+		return
+	}
+
+	log.Printf("ffmpeg.Run() succeeded")
+
 	// Output:
-	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:05,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && ffprobe -v error -select_streams v:0 -show_entries stream=duration -of csv=s=,:p=0 "02.MOV" | awk -F. '{ print $1 }' | read sec; hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" hh mm ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:01,000 --> 00:00:09,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && ffmpeg \
+	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:05,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && ffprobe -v error -select_streams v:0 -show_entries stream=duration -of csv=s=,:p=0 "02.MOV" | awk -F. '{ print $1 }' | read sec; hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" hh mm ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:01,000 --> 00:00:09,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && echo "y" | ffmpeg \
 	// -i "op.jpg" \
 	// -i "ed.jpg" \
 	// -i "01.MP4" \
@@ -352,7 +371,7 @@ func Example() {
 	// [4:a:0]atrim=start=1.000:end=9.000,asetpts=PTS-STARTPTS[clip_02_a];
 	// [op_v][op_a][clip_00_v][clip_00_a][clip_01_v][3:a:0][clip_02_v][clip_02_a][ed_v][ed_a]concat=n=5:v=1:a=1[outv][outa];
 	// [5:a:0][outa]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[outa_merged_bgm]" \
-	// -map "[outv]" \
 	// -map "[outa_merged_bgm]" \
+	// -map "[outv]" \
 	// output.mp4 && rm "op.srt" && rm "ed.srt" && rm "01.srt" && rm "02.srt" && rm "03.srt"
 }

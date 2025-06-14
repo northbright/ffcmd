@@ -91,6 +91,15 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 	return str, nil
 }
 
+func (cmd *CreateOneSubSRTCmd) Run(dir string, fn ReadOutputFunc) error {
+	str, err := cmd.String()
+	if err != nil {
+		return fmt.Errorf("cmd.String() error: %v", err)
+	}
+
+	return RunCmd(dir, str, fn)
+}
+
 // RemoveOneSubSRTCmd represents the command to remove a SRT file.
 type RemoveOneSubSRTCmd struct {
 	srtFile string
@@ -109,4 +118,13 @@ func NewRemoveOneSubSRTCmd(srtFile string) (*RemoveOneSubSRTCmd, error) {
 // String returns the commands string to run.
 func (cmd *RemoveOneSubSRTCmd) String() (string, error) {
 	return fmt.Sprintf(`rm "%s"`, cmd.srtFile), nil
+}
+
+func (cmd *RemoveOneSubSRTCmd) Run(dir string, fn ReadOutputFunc) error {
+	str, err := cmd.String()
+	if err != nil {
+		return fmt.Errorf("cmd.String() error: %v", err)
+	}
+
+	return RunCmd(dir, str, fn)
 }
