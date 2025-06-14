@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+// Timestamp represents the timestamp for video and SRT file.
+// It's 0-based.
 type Timestamp struct {
 	hh  int
 	mm  int
@@ -38,6 +40,7 @@ func NewTimestamp(str string) (*Timestamp, error) {
 	}
 }
 
+// NewTimestampFromSecond converts the seconds in float to timestamp.
 func NewTimestampFromSecond(second float32) (*Timestamp, error) {
 	integer, frac := math.Modf(float64(second))
 	sec := int(integer)
@@ -53,6 +56,10 @@ func NewTimestampFromSecond(second float32) (*Timestamp, error) {
 	return &Timestamp{hh: hh, mm: mm, ss: ss, mmm: mmm}, nil
 }
 
+// Str returns the timestamp string.
+// If forSRT is true, it returns string in the format: "HH:MM:SS,mmm".
+// Otherwise, the format is "HH:MM:SS.mmm".
+// mmm is the millisecond.
 func (ts *Timestamp) Str(forSRT bool) string {
 	sep := "."
 	if forSRT {
@@ -62,14 +69,19 @@ func (ts *Timestamp) Str(forSRT bool) string {
 	return fmt.Sprintf("%02d:%02d:%02d%s%03d", ts.hh, ts.mm, ts.ss, sep, ts.mmm)
 }
 
+// String returns the timestamp string in the format: "HH:MM:SS.mmm".
 func (ts *Timestamp) String() string {
 	return ts.Str(false)
 }
 
+// StringForSRT returns the timestamp string for SRT file which is in the format: "HH:MM:SS,mmm".
 func (ts *Timestamp) StringForSRT() string {
 	return ts.Str(true)
 }
 
+// Second returns the second string in the format: "s.mmm" format.
+// mmm is the millisecond.
+// It may used for the "start" / "end" option of "trim" filter.
 func (ts *Timestamp) Second() string {
 	return fmt.Sprintf("%d.%03d", ts.hh*3600+ts.mm*60+ts.ss, ts.mmm)
 }
