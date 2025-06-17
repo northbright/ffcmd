@@ -91,6 +91,7 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 	return str, nil
 }
 
+// Run runs the command.
 func (cmd *CreateOneSubSRTCmd) Run(dir string, fn ReadOutputFunc) error {
 	str, err := cmd.String()
 	if err != nil {
@@ -120,6 +121,7 @@ func (cmd *RemoveOneSubSRTCmd) String() (string, error) {
 	return fmt.Sprintf(`rm "%s"`, cmd.srtFile), nil
 }
 
+// Run runs the command.
 func (cmd *RemoveOneSubSRTCmd) Run(dir string, fn ReadOutputFunc) error {
 	str, err := cmd.String()
 	if err != nil {
