@@ -262,15 +262,13 @@ func Example() {
 			// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
 			ffmpeg.AddPreCmd(createCmd)
 
-			/*
-				removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
-				if err != nil {
-					log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
-					return
-				}
-				// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-				ffmpeg.AddPostCmd(removeCmd)
-			*/
+			removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
+			if err != nil {
+				log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
+				return
+			}
+			// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
+			ffmpeg.AddPostCmd(removeCmd)
 
 			// Create and chain subtitles filter.
 			subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, c.FontSize)
@@ -352,7 +350,7 @@ func Example() {
 	log.Printf("ffmpeg.Run() succeeded")
 
 	// Output:
-	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:05,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && ffprobe -v error -select_streams v:0 -show_entries stream=duration -of csv=s=,:p=0 "02.MOV" | awk -F. '{ print $1 }' | read sec; hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" hh mm ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:01,000 --> 00:00:09,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && echo "y" | ffmpeg \
+	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:05,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV" | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:01,000 --> 00:00:09,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && echo "y" | ffmpeg \
 	// -i "op.jpg" \
 	// -i "ed.jpg" \
 	// -i "01.MP4" \

@@ -3,7 +3,6 @@ package ffcmd
 import (
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 )
 
@@ -20,7 +19,6 @@ func RunCmd(dir, cmdStr string, fn ReadOutputFunc) error {
 
 	// Set working dir.
 	cmd.Dir = dir
-	log.Printf("----------- cmd.Dir: %s\n", cmd.Dir)
 
 	// Create stdout, stderr pipes.
 	stdout, err := cmd.StdoutPipe()

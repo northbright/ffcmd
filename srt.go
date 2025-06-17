@@ -77,7 +77,7 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 			return "", fmt.Errorf("both end time and video filename are empty, can not get end timestamp")
 		}
 
-		str = fmt.Sprintf(`ffprobe -v error -select_streams v:0 -show_entries stream=duration -of csv=s=,:p=0 "%s" | awk -F. '{ print $1 }' | read sec; hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" hh mm ss; echo -ne "1\n%s --> $end\n%s" > "%s"`, cmd.videoFile, start, cmd.text, cmd.srtFile)
+		str = fmt.Sprintf(`sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "%s" | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" $hh $mm $ss; echo -ne "1\n%s --> $end\n%s" > "%s"`, cmd.videoFile, start, cmd.text, cmd.srtFile)
 	} else {
 		ts, err := NewTimestamp(cmd.end)
 		if err != nil {
