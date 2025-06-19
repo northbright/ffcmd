@@ -1,8 +1,8 @@
 package ffcmd
 
 import (
-	"fmt"
 	"io"
+	"os"
 	"os/exec"
 )
 
@@ -20,30 +20,35 @@ func RunCmd(dir, cmdStr string, fn ReadOutputFunc) error {
 	// Set working dir.
 	cmd.Dir = dir
 
-	// Create stdout, stderr pipes.
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return err
-	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-	stderr, err := cmd.StderrPipe()
-	if err != nil {
-		return err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("cmd.Start() error: %v", err)
-	}
-
-	if fn != nil {
-		if err := fn(stdout, stderr); err != nil {
-			return fmt.Errorf("read output function error: %v", err)
+	/*
+		// Create stdout, stderr pipes.
+		stdout, err := cmd.StdoutPipe()
+		if err != nil {
+			return err
 		}
-	}
 
-	if err := cmd.Wait(); err != nil {
-		return fmt.Errorf("cmd.Wait() error: %v", err)
-	}
+		stderr, err := cmd.StderrPipe()
+		if err != nil {
+			return err
+		}
 
-	return nil
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("cmd.Start() error: %v", err)
+		}
+
+		if fn != nil {
+			if err := fn(stdout, stderr); err != nil {
+				return fmt.Errorf("read output function error: %v", err)
+			}
+		}
+
+		if err := cmd.Wait(); err != nil {
+			return fmt.Errorf("cmd.Wait() error: %v", err)
+		}
+	*/
+
+	return cmd.Run()
 }
