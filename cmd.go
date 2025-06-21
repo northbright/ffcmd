@@ -1,54 +1,33 @@
 package ffcmd
 
 import (
-	"io"
-	"os"
+	"fmt"
 	"os/exec"
+	"runtime"
 )
-
-type ReadOutputFunc func(stdout, stderr io.ReadCloser) error
 
 // Cmd is the command interface.
 type Cmd interface {
 	String() (string, error)
-	Run(dir string, fn ReadOutputFunc) error
+	Command() (*exec.Cmd, error)
 }
 
-func RunCmd(dir, cmdStr string, fn ReadOutputFunc) error {
-	cmd := exec.Command("bash", "-c", cmdStr)
+// GenCommand returns an exec.Cmd with given command string.
+func GenCommand(cmdStr string) (*exec.Cmd, error) {
+	sh := ""
+	arg1 := ""
 
-	// Set working dir.
-	cmd.Dir = dir
+	switch runtime.GOOS {
+	case "darwin":
+		sh = "bash"
+		arg1 = "-c"
+	case "linux":
+		sh = "bash"
+		arg1 = "-c"
+	default:
+		return nil, fmt.Errorf("not supported OS")
+	}
 
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	/*
-		// Create stdout, stderr pipes.
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			return err
-		}
-
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			return err
-		}
-
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("cmd.Start() error: %v", err)
-		}
-
-		if fn != nil {
-			if err := fn(stdout, stderr); err != nil {
-				return fmt.Errorf("read output function error: %v", err)
-			}
-		}
-
-		if err := cmd.Wait(); err != nil {
-			return fmt.Errorf("cmd.Wait() error: %v", err)
-		}
-	*/
-
-	return cmd.Run()
+	cmd := exec.Command(sh, arg1, cmdStr)
+	return cmd, nil
 }

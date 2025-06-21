@@ -2,6 +2,7 @@ package ffcmd
 
 import (
 	"fmt"
+	"os/exec"
 	"strings"
 )
 
@@ -91,14 +92,14 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 	return str, nil
 }
 
-// Run runs the command.
-func (cmd *CreateOneSubSRTCmd) Run(dir string, fn ReadOutputFunc) error {
+// Command returns an exec.Cmd.
+func (cmd *CreateOneSubSRTCmd) Command() (*exec.Cmd, error) {
 	str, err := cmd.String()
 	if err != nil {
-		return fmt.Errorf("cmd.String() error: %v", err)
+		return nil, fmt.Errorf("cmd.String() error: %v", err)
 	}
 
-	return RunCmd(dir, str, fn)
+	return GenCommand(str)
 }
 
 // RemoveOneSubSRTCmd represents the command to remove a SRT file.
@@ -121,12 +122,12 @@ func (cmd *RemoveOneSubSRTCmd) String() (string, error) {
 	return fmt.Sprintf(`rm "%s"`, cmd.srtFile), nil
 }
 
-// Run runs the command.
-func (cmd *RemoveOneSubSRTCmd) Run(dir string, fn ReadOutputFunc) error {
+// Command returns an exec.Cmd.
+func (cmd *RemoveOneSubSRTCmd) Command() (*exec.Cmd, error) {
 	str, err := cmd.String()
 	if err != nil {
-		return fmt.Errorf("cmd.String() error: %v", err)
+		return nil, fmt.Errorf("cmd.String() error: %v", err)
 	}
 
-	return RunCmd(dir, str, fn)
+	return GenCommand(str)
 }

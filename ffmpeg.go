@@ -2,6 +2,7 @@ package ffcmd
 
 import (
 	"fmt"
+	"os/exec"
 	"sort"
 )
 
@@ -272,11 +273,12 @@ func (ff *FFmpeg) String() (string, error) {
 	return str, nil
 }
 
-func (ff *FFmpeg) Run(dir string, fn ReadOutputFunc) error {
+// Command returns an exec.Cmd.
+func (ff *FFmpeg) Command() (*exec.Cmd, error) {
 	str, err := ff.String()
 	if err != nil {
-		return fmt.Errorf("ff.String() error: %v", err)
+		return nil, fmt.Errorf("ff.String() error: %v", err)
 	}
 
-	return RunCmd(dir, str, fn)
+	return GenCommand(str)
 }

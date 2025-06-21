@@ -2,8 +2,8 @@ package ffcmd_test
 
 import (
 	"fmt"
-	"io"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -327,27 +327,30 @@ func Example() {
 
 	str, err := ffmpeg.String()
 	if err != nil {
-		fmt.Printf("cmd.String() error: %v", err)
+		fmt.Printf("ffmpeg.String() error: %v", err)
 		return
 	}
 
 	fmt.Println(str)
 
+	// Get exec.Cmd
+	cmd, err := ffmpeg.Command()
+	if err != nil {
+		log.Printf("ffmpeg.Command() error: %v", err)
+		return
+	}
+	log.Printf("cmd.String(): %s", cmd.String())
+
 	// Run
-	if err = ffmpeg.Run("./examples", func(stdout, stderr io.ReadCloser) error {
-		buf, _ := io.ReadAll(stdout)
-		log.Printf("stdout:\n%s\n", buf)
-
-		buf, _ = io.ReadAll(stderr)
-		log.Printf("stderr:\n%s\n", buf)
-
-		return nil
-	}); err != nil {
-		log.Printf("ffmpeg.Run() error: %v", err)
+	cmd.Dir = "./examples"
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err = cmd.Run(); err != nil {
+		log.Printf("cmd.Run() error: %v", err)
 		return
 	}
 
-	log.Printf("ffmpeg.Run() succeeded")
+	log.Printf("cmd.Run() succeeded")
 
 	// Output:
 	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:05,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV" | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:01,000 --> 00:00:09,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && echo "y" | ffmpeg \
