@@ -51,9 +51,10 @@ func Example() {
 	}
 
 	clips := []Clip{
-		{File: "01.MP4", Start: "", End: "00:00:05", Subtitle: "Mido's tickling Mimao and he's enjoying...", FontSize: 13},
+		{File: "01.MP4", Start: "", End: "00:00:03", Subtitle: "Mido's tickling Mimao and he's enjoying...", FontSize: 13},
 		{File: "02.MOV", Start: "", End: "", Subtitle: "Mimao's playing the toy.", FontSize: 13},
-		{File: "03.MOV", Start: "00:00:01", End: "00:00:09", Subtitle: "It's hard to brush Maomi's teeth...", FontSize: 13},
+		{File: "03.MOV", Start: "00:00:01", End: "00:00:08", Subtitle: "It's hard to brush Maomi's teeth...", FontSize: 13},
+		{File: "04.MOV", Start: "00:00:02", End: "", Subtitle: "What's this???", FontSize: 13},
 	}
 
 	out := Output{
@@ -223,8 +224,8 @@ func Example() {
 					log.Printf("get start timestamp error: %v", err)
 					return
 				}
-				trim += fmt.Sprintf("start=%s:", start.Second())
-				atrim += fmt.Sprintf("start=%s:", start.Second())
+				trim += fmt.Sprintf("start=%s:", start.SecondStr())
+				atrim += fmt.Sprintf("start=%s:", start.SecondStr())
 			}
 
 			if c.End != "" {
@@ -233,8 +234,8 @@ func Example() {
 					log.Printf("get end timestamp error: %v", err)
 					return
 				}
-				trim += fmt.Sprintf("end=%s", end.Second())
-				atrim += fmt.Sprintf("end=%s", end.Second())
+				trim += fmt.Sprintf("end=%s", end.SecondStr())
+				atrim += fmt.Sprintf("end=%s", end.SecondStr())
 			} else {
 				trim = strings.TrimSuffix(trim, ":")
 				atrim = strings.TrimSuffix(atrim, ":")
@@ -353,26 +354,29 @@ func Example() {
 	log.Printf("cmd.Run() succeeded")
 
 	// Output:
-	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:05,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV" | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:01,000 --> 00:00:09,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && echo "y" | ffmpeg \
+	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes lying on father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV" | awk -F. '{ print $1 }'); sec=$(( sec - 0)); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:00,000 --> 00:00:07,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "04.MOV" | awk -F. '{ print $1 }'); sec=$(( sec - 2)); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\nWhat's this???" > "04.srt" && echo "y" | ffmpeg \
 	// -i "op.jpg" \
 	// -i "ed.jpg" \
 	// -i "01.MP4" \
 	// -i "02.MOV" \
 	// -i "03.MOV" \
+	// -i "04.MOV" \
 	// -i "penguinmusic-Better Day.mp3" \
 	// -filter_complex " \
 	// [0:v:0]fps=30,loop=loop=90:size=1,scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,format=pix_fmts=yuv420p,subtitles='op.srt':force_style='Fontsize=15',fade=t=out:st=2:d=1[op_v];
 	// aevalsrc=0:d=3[op_a];
 	// [1:v:0]fps=30,loop=loop=90:size=1,scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,format=pix_fmts=yuv420p,subtitles='ed.srt':force_style='Fontsize=13',fade=t=out:st=2:d=1[ed_v];
 	// aevalsrc=0:d=3[ed_a];
-	// [2:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=end=5.000,setpts=PTS-STARTPTS,subtitles='01.srt':force_style='Fontsize=13'[clip_00_v];
-	// [2:a:0]atrim=end=5.000,asetpts=PTS-STARTPTS[clip_00_a];
+	// [2:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=end=3.000,setpts=PTS-STARTPTS,subtitles='01.srt':force_style='Fontsize=13'[clip_00_v];
+	// [2:a:0]atrim=end=3.000,asetpts=PTS-STARTPTS[clip_00_a];
 	// [3:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,subtitles='02.srt':force_style='Fontsize=13'[clip_01_v];
-	// [4:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=1.000:end=9.000,setpts=PTS-STARTPTS,subtitles='03.srt':force_style='Fontsize=13'[clip_02_v];
-	// [4:a:0]atrim=start=1.000:end=9.000,asetpts=PTS-STARTPTS[clip_02_a];
-	// [op_v][op_a][clip_00_v][clip_00_a][clip_01_v][3:a:0][clip_02_v][clip_02_a][ed_v][ed_a]concat=n=5:v=1:a=1[outv][outa];
-	// [5:a:0][outa]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[outa_merged_bgm]" \
+	// [4:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=1.000:end=8.000,setpts=PTS-STARTPTS,subtitles='03.srt':force_style='Fontsize=13'[clip_02_v];
+	// [4:a:0]atrim=start=1.000:end=8.000,asetpts=PTS-STARTPTS[clip_02_a];
+	// [5:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=2.000,setpts=PTS-STARTPTS,subtitles='04.srt':force_style='Fontsize=13'[clip_03_v];
+	// [5:a:0]atrim=start=2.000,asetpts=PTS-STARTPTS[clip_03_a];
+	// [op_v][op_a][clip_00_v][clip_00_a][clip_01_v][3:a:0][clip_02_v][clip_02_a][clip_03_v][clip_03_a][ed_v][ed_a]concat=n=6:v=1:a=1[outv][outa];
+	// [6:a:0][outa]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[outa_merged_bgm]" \
 	// -map "[outa_merged_bgm]" \
 	// -map "[outv]" \
-	// output.mp4 && rm "op.srt" && rm "ed.srt" && rm "01.srt" && rm "02.srt" && rm "03.srt"
+	// output.mp4 && rm "op.srt" && rm "ed.srt" && rm "01.srt" && rm "02.srt" && rm "03.srt" && rm "04.srt"
 }

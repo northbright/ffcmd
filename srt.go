@@ -59,34 +59,45 @@ func NewCreateOneSubSRTCmdForImageClip(srtFile, text string, duration float32) (
 
 // String returns the command string to run.
 func (cmd *CreateOneSubSRTCmd) String() (string, error) {
-	var start, end string
-	str := ""
+	var (
+		err            error
+		str            = ""
+		tsStart, tsEnd *Timestamp
+		start          = ""
+		end            = ""
+		startSec       float32
+	)
 
-	if cmd.start == "" {
-		start = "00:00:00,000"
+	if cmd.start != "" {
+		start = cmd.start
 	} else {
-		ts, err := NewTimestamp(cmd.start)
-		if err != nil {
-			fmt.Printf("cmd.start: %s\n", cmd.start)
-			return "", fmt.Errorf("invalid start time format")
-		}
-		start = ts.StringForSRT()
+		start = "00:00:00.000"
 	}
+
+	if tsStart, err = NewTimestamp(start); err != nil {
+		return "", fmt.Errorf("invalid start time format")
+	}
+
+	startSec = tsStart.Second()
 
 	if cmd.end == "" {
 		if cmd.videoFile == "" {
 			return "", fmt.Errorf("both end time and video filename are empty, can not get end timestamp")
 		}
 
-		str = fmt.Sprintf(`sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "%s" | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" $hh $mm $ss; echo -ne "1\n%s --> $end\n%s" > "%s"`, cmd.videoFile, start, cmd.text, cmd.srtFile)
+		str = fmt.Sprintf(`sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "%s" | awk -F. '{ print $1 }'); sec=$(( sec - %d)); hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\n%s" > "%s"`, cmd.videoFile, int(startSec), cmd.text, cmd.srtFile)
 	} else {
-		ts, err := NewTimestamp(cmd.end)
-		if err != nil {
+		if tsEnd, err = NewTimestamp(cmd.end); err != nil {
 			return "", fmt.Errorf("invalid end time format")
 		}
-		end = ts.StringForSRT()
 
-		str = fmt.Sprintf(`echo -ne "1\n%s --> %s\n%s" > "%s"`, start, end, cmd.text, cmd.srtFile)
+		if tsEnd, err = tsEnd.Sub(tsStart); err != nil {
+			return "", fmt.Errorf("tsEnd.Sub() error: %v", err)
+		}
+
+		end = tsEnd.StringForSRT()
+
+		str = fmt.Sprintf(`echo -ne "1\n00:00:00,000 --> %s\n%s" > "%s"`, end, cmd.text, cmd.srtFile)
 	}
 
 	return str, nil

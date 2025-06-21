@@ -79,9 +79,26 @@ func (ts *Timestamp) StringForSRT() string {
 	return ts.Str(true)
 }
 
-// Second returns the second string in the format: "s.mmm" format.
+// Second returns the number of seconds in float.
+func (ts *Timestamp) Second() float32 {
+	return float32(ts.hh*3600) + float32(ts.mm*60) + float32(ts.ss) + float32(ts.mmm)/1000
+}
+
+// SecondStr returns the second string in the format: "s.mmm" format.
 // mmm is the millisecond.
 // It may used for the "start" / "end" option of "trim" filter.
-func (ts *Timestamp) Second() string {
+func (ts *Timestamp) SecondStr() string {
 	return fmt.Sprintf("%d.%03d", ts.hh*3600+ts.mm*60+ts.ss, ts.mmm)
+}
+
+// Sub returns a new timestamp which = ts1 - ts2.
+func (ts1 *Timestamp) Sub(ts2 *Timestamp) (*Timestamp, error) {
+	sec1 := ts1.Second()
+	sec2 := ts2.Second()
+
+	if sec1 < sec2 {
+		return nil, fmt.Errorf("ts1 < ts2")
+	}
+
+	return NewTimestampFromSecond(sec1 - sec2)
 }
