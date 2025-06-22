@@ -67,6 +67,9 @@ config.json
 !*.m4a
 !*.M4A
 
+# Ignore output media
+output.mp4
+
 # SRT
 !*.srt
 !*.SRT
