@@ -65,7 +65,7 @@ func Example() {
 	}
 
 	// Create ffmpeg command with output file.
-	ffmpeg := ffcmd.New("output.mp4", true)
+	ffmpeg := ffcmd.New("output.mp4", out.FPS, true)
 
 	// Create op video filterchain.
 	op_v := ffcmd.NewFilterChain("[op_v]")
@@ -378,5 +378,6 @@ func Example() {
 	// [6:a:0][outa]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[outa_merged_bgm]" \
 	// -map "[outa_merged_bgm]" \
 	// -map "[outv]" \
+	// -r 30 \
 	// output.mp4 && rm "op.srt" && rm "ed.srt" && rm "01.srt" && rm "02.srt" && rm "03.srt" && rm "04.srt"
 }

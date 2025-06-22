@@ -23,6 +23,7 @@ ffmcd is a [Golang](https://golang.org) package to generate [ffmpeg](https://ffm
   [N:a]FILTER_1,FILTER_2,...FILTER_N[N_a];
   [0_v][0_a][1_v][1_a]...[n_v][n_a]FILTER_HAS_MULTI_INPUT_AND_OUTPUT[out_v][out_a]" \
   -map "[out_v]" -map "[out_a]" \
+  -r FPS \
   output.mp4
   ```
 

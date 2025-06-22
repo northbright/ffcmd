@@ -141,6 +141,7 @@ func (fc *FilterChain) String() string {
 type FFmpeg struct {
 	inputs          []string
 	output          string
+	fps             int
 	fg              []*FilterChain
 	selectedStreams map[string]struct{}
 	preCmds         []Cmd
@@ -150,10 +151,11 @@ type FFmpeg struct {
 
 // New returns a new ffmpeg command.
 // output: ffmpeg output(e.g. "output.mp4")
+// fps: output frame rate.
 // overwrite: if overwrite output when run ffmpeg command.
 // It'll failed to generate output if output exists and overwrite is set to false.
-func New(output string, overwrite bool) *FFmpeg {
-	return &FFmpeg{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
+func New(output string, fps int, overwrite bool) *FFmpeg {
+	return &FFmpeg{inputs: []string{}, output: output, fps: fps, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
 }
 
 // AddInput adds input and returns index of the input.
@@ -260,6 +262,8 @@ func (ff *FFmpeg) String() (string, error) {
 	for _, stream := range selectedStreams {
 		str += fmt.Sprintf("-map \"%s\" \\\n", stream)
 	}
+
+	str += fmt.Sprintf("-r %d \\\n", ff.fps)
 
 	str += ff.output
 
