@@ -1,6 +1,7 @@
 package ffcmd
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"sort"
@@ -281,4 +282,14 @@ func (ff *FFmpeg) Command() (*exec.Cmd, error) {
 	}
 
 	return GenCommand(str)
+}
+
+// CommandContext returns an exec.Cmd like [Command] but includes a context.
+func (ff *FFmpeg) CommandContext(ctx context.Context) (*exec.Cmd, error) {
+	str, err := ff.String()
+	if err != nil {
+		return nil, fmt.Errorf("ff.String() error: %v", err)
+	}
+
+	return GenCommandContext(ctx, str)
 }

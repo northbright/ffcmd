@@ -1,6 +1,7 @@
 package ffcmd
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -113,6 +114,16 @@ func (cmd *CreateOneSubSRTCmd) Command() (*exec.Cmd, error) {
 	return GenCommand(str)
 }
 
+// CommandContext returns an exec.Cmd like [Command] but includes a context.
+func (cmd *CreateOneSubSRTCmd) CommandContext(ctx context.Context) (*exec.Cmd, error) {
+	str, err := cmd.String()
+	if err != nil {
+		return nil, fmt.Errorf("cmd.String() error: %v", err)
+	}
+
+	return GenCommandContext(ctx, str)
+}
+
 // RemoveOneSubSRTCmd represents the command to remove a SRT file.
 type RemoveOneSubSRTCmd struct {
 	srtFile string
@@ -141,4 +152,14 @@ func (cmd *RemoveOneSubSRTCmd) Command() (*exec.Cmd, error) {
 	}
 
 	return GenCommand(str)
+}
+
+// CommandContext returns an exec.Cmd like [Command] but includes a context.
+func (cmd *RemoveOneSubSRTCmd) CommandContext(ctx context.Context) (*exec.Cmd, error) {
+	str, err := cmd.String()
+	if err != nil {
+		return nil, fmt.Errorf("cmd.String() error: %v", err)
+	}
+
+	return GenCommandContext(ctx, str)
 }
