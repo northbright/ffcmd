@@ -46,7 +46,7 @@ func Example() {
 		File:            "ed.jpg",
 		Duration:        3,
 		FadeOutDuration: 1,
-		Subtitle:        "Mimao likes lying on father's bed...😂\\nMusic by penguinmusic: Better Day",
+		Subtitle:        "Mimao likes father's bed...😂\\nMusic by penguinmusic: Better Day",
 		FontSize:        13,
 	}
 
