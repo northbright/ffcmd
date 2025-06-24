@@ -64,8 +64,8 @@ func Example() {
 		FPS:  30,
 	}
 
-	// Create ffmpeg command with output file.
-	ffmpeg := ffcmd.New("output.mp4", out.FPS, true)
+	// Create ffmpeg command with output file and specify FPS option.
+	ffmpeg := ffcmd.New("output.mp4", true, ffcmd.FPS(out.FPS))
 
 	// Create op video filterchain.
 	op_v := ffcmd.NewFilterChain("[op_v]")

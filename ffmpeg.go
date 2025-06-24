@@ -141,21 +141,41 @@ func (fc *FilterChain) String() string {
 type FFmpeg struct {
 	inputs          []string
 	output          string
-	fps             int
 	fg              []*FilterChain
 	selectedStreams map[string]struct{}
 	preCmds         []Cmd
 	postCmds        []Cmd
 	overwrite       bool
+	// Options.
+	fps int
+}
+
+// Option represents the option of FFmpeg.
+type Option func(ff *FFmpeg)
+
+// FPS returns option to set FPS.
+func FPS(fps int) Option {
+	return func(ff *FFmpeg) {
+		if fps > 0 {
+			ff.fps = fps
+		}
+	}
 }
 
 // New returns a new ffmpeg command.
 // output: ffmpeg output(e.g. "output.mp4")
-// fps: output frame rate.
 // overwrite: if overwrite output when run ffmpeg command.
 // It'll failed to generate output if output exists and overwrite is set to false.
-func New(output string, fps int, overwrite bool) *FFmpeg {
-	return &FFmpeg{inputs: []string{}, output: output, fps: fps, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
+// options: optional options for ffmpeg(e.g. specify output FPS using [FPS]).
+func New(output string, overwrite bool, options ...Option) *FFmpeg {
+	ff := &FFmpeg{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
+
+	// Update options.
+	for _, option := range options {
+		option(ff)
+	}
+
+	return ff
 }
 
 // AddInput adds input and returns index of the input.
