@@ -1,6 +1,6 @@
-# ffmcd
+# ffcmd
 
-ffmcd is a [Golang](https://golang.org) package to generate [ffmpeg](https://ffmpeg.org/) commands by specifying inputs, filterchains and output.
+ffcmd is a [Golang](https://golang.org) package to generate [ffmpeg](https://ffmpeg.org/) commands by specifying inputs, filterchains and output.
 
 ## Features
 * Use another filterchain's output as input programmatically.
@@ -28,7 +28,7 @@ ffmcd is a [Golang](https://golang.org) package to generate [ffmpeg](https://ffm
   ```
 
 ## Docs
-* <https://pkg.go.dev/github.com/northbright/ffmcd>
+* <https://pkg.go.dev/github.com/northbright/ffcmd>
 
 ## License
 * [MIT License](LICENSE)
