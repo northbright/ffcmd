@@ -1,10 +1,10 @@
-package ffcmd
+package ffmpeg
 
 import (
-	"context"
 	"fmt"
-	"os/exec"
 	"sort"
+
+	"github.com/northbright/ffcmd"
 )
 
 // FilterChain represents the filterchain of ffmpeg.
@@ -143,8 +143,8 @@ type FFmpeg struct {
 	output          string
 	fg              []*FilterChain
 	selectedStreams map[string]struct{}
-	preCmds         []Cmd
-	postCmds        []Cmd
+	preCmds         []ffcmd.Cmd
+	postCmds        []ffcmd.Cmd
 	overwrite       bool
 	// Options.
 	fps int
@@ -186,12 +186,12 @@ func (ff *FFmpeg) AddInput(in string) int {
 }
 
 // AddPreCmd adds the command(set-up) to run before ffmpeg.
-func (ff *FFmpeg) AddPreCmd(cmd Cmd) {
+func (ff *FFmpeg) AddPreCmd(cmd ffcmd.Cmd) {
 	ff.preCmds = append(ff.preCmds, cmd)
 }
 
 // AddPostCmd adds the command(clean-up) to run after ffmpeg.
-func (ff *FFmpeg) AddPostCmd(cmd Cmd) {
+func (ff *FFmpeg) AddPostCmd(cmd ffcmd.Cmd) {
 	ff.postCmds = append(ff.postCmds, cmd)
 }
 
@@ -296,24 +296,4 @@ func (ff *FFmpeg) String() (string, error) {
 	}
 
 	return str, nil
-}
-
-// Command returns an exec.Cmd.
-func (ff *FFmpeg) Command() (*exec.Cmd, error) {
-	str, err := ff.String()
-	if err != nil {
-		return nil, fmt.Errorf("ff.String() error: %v", err)
-	}
-
-	return GenCommand(str)
-}
-
-// CommandContext returns an exec.Cmd like [Command] but includes a context.
-func (ff *FFmpeg) CommandContext(ctx context.Context) (*exec.Cmd, error) {
-	str, err := ff.String()
-	if err != nil {
-		return nil, fmt.Errorf("ff.String() error: %v", err)
-	}
-
-	return GenCommandContext(ctx, str)
 }

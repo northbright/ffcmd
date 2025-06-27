@@ -1,13 +1,20 @@
-package ffcmd_test
+package ffmpeg_test
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 
-	"github.com/northbright/ffcmd"
+	"github.com/northbright/ffcmd/ffmpeg"
+	"github.com/northbright/ffcmd/srt"
+	"github.com/northbright/timestamp"
 )
 
 func Example() {
@@ -65,14 +72,14 @@ func Example() {
 	}
 
 	// Create ffmpeg command with output file and specify FPS option.
-	ffmpeg := ffcmd.New("output.mp4", true, ffcmd.FPS(out.FPS))
+	ff := ffmpeg.New("output.mp4", true, ffmpeg.FPS(out.FPS))
 
 	// Create op video filterchain.
-	op_v := ffcmd.NewFilterChain("[op_v]")
+	op_v := ffmpeg.NewFilterChain("[op_v]")
 
 	// Add "op.jpg" as ffmpeg input and get the input index.
 	// Add video stream of "op.jpg"([0:v:0]) as op video chain's input.
-	op_v.AddInputByID(ffmpeg.AddInput(op.File), "v", 0)
+	op_v.AddInputByID(ff.AddInput(op.File), "v", 0)
 
 	// Create op video filters.
 	fps := fmt.Sprintf("fps=%d", out.FPS)
@@ -88,21 +95,21 @@ func Example() {
 	// Check if need to chain subtitles filter.
 	if op.Subtitle != "" {
 		srtFile := strings.Replace(op.File, filepath.Ext(op.File), ".srt", -1)
-		createCmd, err := ffcmd.NewCreateOneSubSRTCmdForImageClip(srtFile, op.Subtitle, float32(op.Duration))
+		createCmd, err := srt.NewCreateOneSubSRTForImageClip(srtFile, op.Subtitle, float32(op.Duration))
 		if err != nil {
-			log.Printf("ffcmd.NewCreateOneSubSRTCmdForImageClip() error: %v", err)
+			log.Printf("srt.NewCreateOneSubSRTForImageClip() error: %v", err)
 			return
 		}
 		// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
-		ffmpeg.AddPreCmd(createCmd)
+		ff.AddPreCmd(createCmd)
 
-		removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
+		removeCmd, err := srt.NewRemoveOneSubSRT(srtFile)
 		if err != nil {
-			log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
+			log.Printf("srt.NewRemoveOneSubSRT() error: %v", err)
 			return
 		}
 		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-		ffmpeg.AddPostCmd(removeCmd)
+		ff.AddPostCmd(removeCmd)
 
 		// Create and chain subtitles filter.
 		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, op.FontSize)
@@ -114,7 +121,7 @@ func Example() {
 	op_v.Chain(fade)
 
 	// Create op audio filterchain.
-	op_a := ffcmd.NewFilterChain("[op_a]")
+	op_a := ffmpeg.NewFilterChain("[op_a]")
 
 	// Create op audio fiters.
 	aevalsrc := fmt.Sprintf("aevalsrc=0:d=%d", op.Duration)
@@ -123,15 +130,15 @@ func Example() {
 	op_a.Chain(aevalsrc)
 
 	// Add op video / audio filterchain to filtergraph.
-	ffmpeg.Chain(op_v)
-	ffmpeg.Chain(op_a)
+	ff.Chain(op_v)
+	ff.Chain(op_a)
 
 	// Create ed video filterchain.
-	ed_v := ffcmd.NewFilterChain("[ed_v]")
+	ed_v := ffmpeg.NewFilterChain("[ed_v]")
 
 	// Add "ed.jpg" as ffmpeg input and get the input index.
 	// Add video stream of "ed.jpg"([1:v:0]) as ed's input.
-	ed_v.AddInputByID(ffmpeg.AddInput(ed.File), "v", 0)
+	ed_v.AddInputByID(ff.AddInput(ed.File), "v", 0)
 
 	// Create ed video filters.
 	loop = fmt.Sprintf("loop=loop=%d:size=1", ed.Duration*out.FPS)
@@ -142,21 +149,21 @@ func Example() {
 	// Check if need to chain subtitles filter.
 	if ed.Subtitle != "" {
 		srtFile := strings.Replace(ed.File, filepath.Ext(ed.File), ".srt", -1)
-		createCmd, err := ffcmd.NewCreateOneSubSRTCmdForImageClip(srtFile, ed.Subtitle, float32(ed.Duration))
+		createCmd, err := srt.NewCreateOneSubSRTForImageClip(srtFile, ed.Subtitle, float32(ed.Duration))
 		if err != nil {
-			log.Printf("ffcmd.NewCreateOneSubSRTCmdForImageClip() error: %v", err)
+			log.Printf("srt.NewCreateOneSubSRTForImageClip() error: %v", err)
 			return
 		}
 		// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
-		ffmpeg.AddPreCmd(createCmd)
+		ff.AddPreCmd(createCmd)
 
-		removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
+		removeCmd, err := srt.NewRemoveOneSubSRT(srtFile)
 		if err != nil {
-			log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
+			log.Printf("srt.NewRemoveOneSubSRT() error: %v", err)
 			return
 		}
 		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-		ffmpeg.AddPostCmd(removeCmd)
+		ff.AddPostCmd(removeCmd)
 
 		// Create and chain subtitles filter.
 		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, ed.FontSize)
@@ -168,7 +175,7 @@ func Example() {
 	ed_v.Chain(fade)
 
 	// Create audio filterchain.
-	ed_a := ffcmd.NewFilterChain("[ed_a]")
+	ed_a := ffmpeg.NewFilterChain("[ed_a]")
 
 	// Create ed audio fiters.
 	aevalsrc = fmt.Sprintf("aevalsrc=0:d=%d", ed.Duration)
@@ -177,11 +184,11 @@ func Example() {
 	ed_a.Chain(aevalsrc)
 
 	// Add ed video / audio filterchain to filtergraph.
-	ffmpeg.Chain(ed_v)
-	ffmpeg.Chain(ed_a)
+	ff.Chain(ed_v)
+	ff.Chain(ed_a)
 
 	// Create concat filter chain.
-	concatFC := ffcmd.NewFilterChain("[outv]", "[outa]")
+	concatFC := ffmpeg.NewFilterChain("[outv]", "[outa]")
 
 	// Add op video and audio filterchain's output as concat filterchain's input.
 	concatFC.AddInputByOutput(op_v, 0)
@@ -194,14 +201,14 @@ func Example() {
 	// Loop all video clips.
 	for i, c := range clips {
 		// Create clip video filter chain.
-		clip_v := ffcmd.NewFilterChain(fmt.Sprintf("[clip_%02d_v]", i))
+		clip_v := ffmpeg.NewFilterChain(fmt.Sprintf("[clip_%02d_v]", i))
 
 		// Create clip audio filter chain.
-		clip_a := ffcmd.NewFilterChain(fmt.Sprintf("[clip_%02d_a]", i))
+		clip_a := ffmpeg.NewFilterChain(fmt.Sprintf("[clip_%02d_a]", i))
 
 		// Add video file as ffmpeg input and get the input index.
 		// Add video / audio stream of the file([X:v:0] / [X:a:0], X is the ffmpeg input id) as clip's input.
-		id := ffmpeg.AddInput(c.File)
+		id := ff.AddInput(c.File)
 		clip_v.AddInputByID(id, "v", 0)
 		clip_a.AddInputByID(id, "a", 0)
 
@@ -219,7 +226,7 @@ func Example() {
 			atrim := "atrim="
 
 			if c.Start != "" {
-				start, err := ffcmd.NewTimestamp(c.Start)
+				start, err := timestamp.New(c.Start)
 				if err != nil {
 					log.Printf("get start timestamp error: %v", err)
 					return
@@ -229,7 +236,7 @@ func Example() {
 			}
 
 			if c.End != "" {
-				end, err := ffcmd.NewTimestamp(c.End)
+				end, err := timestamp.New(c.End)
 				if err != nil {
 					log.Printf("get end timestamp error: %v", err)
 					return
@@ -255,21 +262,21 @@ func Example() {
 		// Check if need to chain subtitles filter.
 		if c.Subtitle != "" {
 			srtFile := strings.Replace(c.File, filepath.Ext(c.File), ".srt", -1)
-			createCmd, err := ffcmd.NewCreateOneSubSRTCmd(srtFile, c.File, c.Subtitle, c.Start, c.End)
+			createCmd, err := srt.NewCreateOneSubSRT(srtFile, c.File, c.Subtitle, c.Start, c.End)
 			if err != nil {
-				log.Printf("ffcmd.NewCreateOneSubSRTCmd() error: %v", err)
+				log.Printf("srt.NewCreateOneSubSRT() error: %v", err)
 				return
 			}
 			// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
-			ffmpeg.AddPreCmd(createCmd)
+			ff.AddPreCmd(createCmd)
 
-			removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
+			removeCmd, err := srt.NewRemoveOneSubSRT(srtFile)
 			if err != nil {
-				log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
+				log.Printf("srt.NewRemoveOneSubSRT() error: %v", err)
 				return
 			}
 			// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-			ffmpeg.AddPostCmd(removeCmd)
+			ff.AddPostCmd(removeCmd)
 
 			// Create and chain subtitles filter.
 			subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, c.FontSize)
@@ -277,8 +284,8 @@ func Example() {
 		}
 
 		// Add clip video / audio filterchain to filtergraph.
-		ffmpeg.Chain(clip_v)
-		ffmpeg.Chain(clip_a)
+		ff.Chain(clip_v)
+		ff.Chain(clip_a)
 
 		// Add clip video / audio filter chain's output as concat filterchain's input.
 		concatFC.AddInputByOutput(clip_v, 0)
@@ -299,13 +306,13 @@ func Example() {
 	concatFC.Chain(concat)
 
 	// Add concat filterchain to filtergraph.
-	ffmpeg.Chain(concatFC)
+	ff.Chain(concatFC)
 
 	// Add BGM as command input.
-	id := ffmpeg.AddInput("penguinmusic-Better Day.mp3")
+	id := ff.AddInput("penguinmusic-Better Day.mp3")
 
 	// Create filterchain to merge BGM and original audio streams.
-	bgmFC := ffcmd.NewFilterChain("[outa_merged_bgm]")
+	bgmFC := ffmpeg.NewFilterChain("[outa_merged_bgm]")
 	bgmFC.AddInputByID(id, "a", 0)
 	bgmFC.AddInputByOutput(concatFC, 1)
 
@@ -319,33 +326,58 @@ func Example() {
 	bgmFC.Chain(amerge).Chain(pan)
 
 	// Add BGM filterchain.
-	ffmpeg.Chain(bgmFC)
+	ff.Chain(bgmFC)
 
 	// Select output streams.
 	// If none stream is selected, it'll auto select last filterchain's labeled outputs.
-	ffmpeg.MapByOutput(concatFC, 0)
-	ffmpeg.MapByOutput(bgmFC, 0)
+	ff.MapByOutput(concatFC, 0)
+	ff.MapByOutput(bgmFC, 0)
 
-	str, err := ffmpeg.String()
+	str, err := ff.String()
 	if err != nil {
-		fmt.Printf("ffmpeg.String() error: %v", err)
+		fmt.Printf("ff.String() error: %v", err)
 		return
 	}
 
 	fmt.Println(str)
 
-	// Get exec.Cmd
-	cmd, err := ffmpeg.Command()
-	if err != nil {
-		log.Printf("ffmpeg.Command() error: %v", err)
+	// Press Ctrl + C to stop the test.
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer cancel()
+
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "darwin":
+		cmd = exec.CommandContext(ctx, "zsh", "-c", str)
+	case "linux":
+		cmd = exec.CommandContext(ctx, "bash", "-c", str)
+	default:
+		fmt.Println("not supported os")
 		return
 	}
-	log.Printf("cmd.String(): %s", cmd.String())
 
-	// Run
+	// To stop the process and its subprocesses,
+	// request that the process group id be set (Setpgid: true) to the PID of the newly spawned process (Pgid: 0).
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid: true,
+	}
 	cmd.Dir = "./examples"
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cmd.Cancel = func() error {
+		// Kill all processes in the group via `kill -9 -$PGID`.
+		// Note the "-" to signal the group.
+		return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+	}
+
+	go func() {
+		select {
+		case <-ctx.Done():
+			log.Printf("context is done")
+		}
+	}()
+
 	if err = cmd.Run(); err != nil {
 		log.Printf("cmd.Run() error: %v", err)
 		return
