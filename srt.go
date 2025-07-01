@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/northbright/timestamp"
@@ -89,7 +90,12 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 			return "", fmt.Errorf("both end time and video filename are empty, can not get end timestamp")
 		}
 
-		str = fmt.Sprintf(`sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "%s"); sec=$(echo $sec - %.03f | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\n%s" > "%s"`, cmd.videoFile, startSec, cmd.text, cmd.srtFile)
+		bin := "ffprobe"
+		if FFmpegBinDir != "" {
+			bin = filepath.Join(FFmpegBinDir, bin)
+		}
+
+		str = fmt.Sprintf(`sec=$(%s -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "%s"); sec=$(echo $sec - %.03f | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\n%s" > "%s"`, bin, cmd.videoFile, startSec, cmd.text, cmd.srtFile)
 	} else {
 		if tsEnd, err = timestamp.New(cmd.end); err != nil {
 			return "", fmt.Errorf("invalid end time format")

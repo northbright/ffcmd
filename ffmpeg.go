@@ -148,21 +148,11 @@ type FFmpegCmd struct {
 	postCmds        []Cmd
 	overwrite       bool
 	// FFmpegOptions.
-	path string
-	fps  int
+	fps int
 }
 
 // FFmpegOption represents the option of FFmpegCmd.
 type FFmpegOption func(ff *FFmpegCmd)
-
-// FFmpegPath returns the option to set FFmpeg binary path.
-func FFmpegPath(path string) FFmpegOption {
-	return func(ff *FFmpegCmd) {
-		if path != "" {
-			ff.path = path
-		}
-	}
-}
 
 // FFmpegOutputFPS returns the option to set FPS of FFmpeg command's output.
 func FFmpegOutputFPS(fps int) FFmpegOption {
@@ -257,12 +247,12 @@ func (ff *FFmpegCmd) String() (string, error) {
 		str += `echo "y" | `
 	}
 
-	binary := "ffmpeg"
-	if ff.path != "" {
-		binary = filepath.Join(ff.path, binary)
+	bin := "ffmpeg"
+	if FFmpegBinDir != "" {
+		bin = filepath.Join(FFmpegBinDir, bin)
 	}
 
-	str += fmt.Sprintf("%s \\\n", binary)
+	str += fmt.Sprintf("%s \\\n", bin)
 
 	for _, in := range ff.inputs {
 		str += fmt.Sprintf("-i \"%s\" \\\n", in)
