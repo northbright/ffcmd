@@ -1,10 +1,10 @@
-package ffmpeg
+package ffcmd
 
 import (
+	"context"
 	"fmt"
+	"os/exec"
 	"sort"
-
-	"github.com/northbright/ffcmd"
 )
 
 // FilterChain represents the filterchain of ffmpeg.
@@ -137,38 +137,38 @@ func (fc *FilterChain) String() string {
 	return str
 }
 
-// FFmpeg represents the ffmpeg command.
-type FFmpeg struct {
+// FFmpegCmd represents the ffmpeg command.
+type FFmpegCmd struct {
 	inputs          []string
 	output          string
 	fg              []*FilterChain
 	selectedStreams map[string]struct{}
-	preCmds         []ffcmd.Cmd
-	postCmds        []ffcmd.Cmd
+	preCmds         []Cmd
+	postCmds        []Cmd
 	overwrite       bool
-	// Options.
+	// FFmpegOptions.
 	fps int
 }
 
-// Option represents the option of FFmpeg.
-type Option func(ff *FFmpeg)
+// FFmpegOption represents the option of FFmpegCmd.
+type FFmpegOption func(ff *FFmpegCmd)
 
-// FPS returns option to set FPS.
-func FPS(fps int) Option {
-	return func(ff *FFmpeg) {
+// FFmpegOutputFPS returns the option to set FPS of FFmpeg command's output.
+func FFmpegOutputFPS(fps int) FFmpegOption {
+	return func(ff *FFmpegCmd) {
 		if fps > 0 {
 			ff.fps = fps
 		}
 	}
 }
 
-// New returns a new ffmpeg command.
+// NewFFmpegCmd returns a new ffmpeg command.
 // output: ffmpeg output(e.g. "output.mp4")
 // overwrite: if overwrite output when run ffmpeg command.
 // It'll failed to generate output if output exists and overwrite is set to false.
-// options: optional options for ffmpeg(e.g. specify output FPS using [FPS]).
-func New(output string, overwrite bool, options ...Option) *FFmpeg {
-	ff := &FFmpeg{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
+// options: optional options for ffmpeg(e.g. specify output FFmpegOutputFPS using [FFmpegOutputFPS]).
+func NewFFmpegCmd(output string, overwrite bool, options ...FFmpegOption) *FFmpegCmd {
+	ff := &FFmpegCmd{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
 
 	// Update options.
 	for _, option := range options {
@@ -179,38 +179,38 @@ func New(output string, overwrite bool, options ...Option) *FFmpeg {
 }
 
 // AddInput adds input and returns index of the input.
-func (ff *FFmpeg) AddInput(in string) int {
+func (ff *FFmpegCmd) AddInput(in string) int {
 	id := len(ff.inputs)
 	ff.inputs = append(ff.inputs, in)
 	return id
 }
 
 // AddPreCmd adds the command(set-up) to run before ffmpeg.
-func (ff *FFmpeg) AddPreCmd(cmd ffcmd.Cmd) {
+func (ff *FFmpegCmd) AddPreCmd(cmd Cmd) {
 	ff.preCmds = append(ff.preCmds, cmd)
 }
 
 // AddPostCmd adds the command(clean-up) to run after ffmpeg.
-func (ff *FFmpeg) AddPostCmd(cmd ffcmd.Cmd) {
+func (ff *FFmpegCmd) AddPostCmd(cmd Cmd) {
 	ff.postCmds = append(ff.postCmds, cmd)
 }
 
 // Chain chains filterchain and return a ffmpeg command to chain next filterchain.
 // e.g. ff.Chain(videoFC).Chain(audioFC).Chain(ConcatFC).
-func (ff *FFmpeg) Chain(fc *FilterChain) *FFmpeg {
+func (ff *FFmpegCmd) Chain(fc *FilterChain) *FFmpegCmd {
 	ff.fg = append(ff.fg, fc)
 	return ff
 }
 
 // Map selects stream as ffmpeg output.
-func (ff *FFmpeg) Map(stream string) {
+func (ff *FFmpegCmd) Map(stream string) {
 	if _, ok := ff.selectedStreams[stream]; !ok {
 		ff.selectedStreams[stream] = struct{}{}
 	}
 }
 
 // MapByID selects stream by input index, stream type and index of stream as ffmpeg output.
-func (ff *FFmpeg) MapByID(inputID int, streamType string, streamID int) {
+func (ff *FFmpegCmd) MapByID(inputID int, streamType string, streamID int) {
 	stream := fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID)
 	if _, ok := ff.selectedStreams[stream]; !ok {
 		ff.selectedStreams[stream] = struct{}{}
@@ -218,20 +218,20 @@ func (ff *FFmpeg) MapByID(inputID int, streamType string, streamID int) {
 }
 
 // MapByOutput selects the output stream of filterchain by index as ffmpeg output dynamically.
-func (ff *FFmpeg) MapByOutput(fc *FilterChain, id int) {
+func (ff *FFmpegCmd) MapByOutput(fc *FilterChain, id int) {
 	stream := fc.Output(id)
 	ff.Map(stream)
 }
 
 // MapByOutputs selects all the output streams of filterchain as ffmpeg outputs dynamically.
-func (ff *FFmpeg) MapByOutputs(fc *FilterChain) {
+func (ff *FFmpegCmd) MapByOutputs(fc *FilterChain) {
 	for _, stream := range fc.Outputs() {
 		ff.Map(stream)
 	}
 }
 
 // String returns the ffmpeg command string to run.
-func (ff *FFmpeg) String() (string, error) {
+func (ff *FFmpegCmd) String() (string, error) {
 	str := ""
 	for _, cmd := range ff.preCmds {
 		s, err := cmd.String()
@@ -283,7 +283,10 @@ func (ff *FFmpeg) String() (string, error) {
 		str += fmt.Sprintf("-map \"%s\" \\\n", stream)
 	}
 
-	str += fmt.Sprintf("-r %d \\\n", ff.fps)
+	// Output options.
+	if ff.fps != 0 {
+		str += fmt.Sprintf("-r %d \\\n", ff.fps)
+	}
 
 	str += ff.output
 
@@ -296,4 +299,14 @@ func (ff *FFmpeg) String() (string, error) {
 	}
 
 	return str, nil
+}
+
+// CommandContext accepts a context and returns an *exec.Cmd to run.
+func (ff *FFmpegCmd) CommandContext(ctx context.Context) (*exec.Cmd, error) {
+	return commandContext(ctx, ff)
+}
+
+// Command returns an *exec.Cmd to run.
+func (ff *FFmpegCmd) Command() (*exec.Cmd, error) {
+	return ff.CommandContext(context.Background())
 }
