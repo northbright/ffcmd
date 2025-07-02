@@ -342,9 +342,9 @@ func Example() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	cmd, err := ff.CommandContext(ctx)
+	cmd, err := ffcmd.CommandContext(ctx, ff)
 	if err != nil {
-		log.Printf("ff.CommandContext() error: %v", err)
+		log.Printf("ffcmd.CommandContext() error: %v", err)
 		return
 	}
 
@@ -363,10 +363,8 @@ func Example() {
 	}
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			log.Printf("context is done")
-		}
+		<-ctx.Done()
+		log.Printf("context is done")
 	}()
 
 	if err = cmd.Run(); err != nil {

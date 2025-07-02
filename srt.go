@@ -1,9 +1,7 @@
 package ffcmd
 
 import (
-	"context"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -13,12 +11,11 @@ import (
 // CreateOneSubSRTCmd is the command to create a SRT file which contains 1 subtitle only.
 // It can be used to generate commands to create / remove a simple SRT file used in ffmpeg's subtitles filter.
 type CreateOneSubSRTCmd struct {
-	srtFile        string
-	videoFile      string
-	text           string
-	start          string
-	end            string
-	tsStart, tsEnd *timestamp.Timestamp
+	srtFile   string
+	videoFile string
+	text      string
+	start     string
+	end       string
 }
 
 // NewCreateOneSubSRTCmd returns a new command to create SRT file.
@@ -113,16 +110,6 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 	return str, nil
 }
 
-// CommandContext accpets a context and returns an *exec.Cmd to run.
-func (cmd *CreateOneSubSRTCmd) CommandContext(ctx context.Context) (*exec.Cmd, error) {
-	return commandContext(ctx, cmd)
-}
-
-// Command returns an *exec.Cmd to run.
-func (cmd *CreateOneSubSRTCmd) Command() (*exec.Cmd, error) {
-	return cmd.CommandContext(context.Background())
-}
-
 // RemoveOneSubSRTCmd represents the command to remove a SRT file.
 type RemoveOneSubSRTCmd struct {
 	srtFile string
@@ -141,14 +128,4 @@ func NewRemoveOneSubSRTCmd(srtFile string) (*RemoveOneSubSRTCmd, error) {
 // String returns the commands string to run.
 func (cmd *RemoveOneSubSRTCmd) String() (string, error) {
 	return fmt.Sprintf(`rm "%s"`, cmd.srtFile), nil
-}
-
-// CommandContext accepts a context and returns an *exec.Cmd to run.
-func (cmd *RemoveOneSubSRTCmd) CommandContext(ctx context.Context) (*exec.Cmd, error) {
-	return commandContext(ctx, cmd)
-}
-
-// Command returns an *exec.Cmd to run.
-func (cmd *RemoveOneSubSRTCmd) Command() (*exec.Cmd, error) {
-	return cmd.CommandContext(context.Background())
 }

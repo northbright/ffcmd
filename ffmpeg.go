@@ -1,9 +1,7 @@
 package ffcmd
 
 import (
-	"context"
 	"fmt"
-	"os/exec"
 	"path/filepath"
 	"sort"
 )
@@ -280,7 +278,7 @@ func (ff *FFmpegCmd) String() (string, error) {
 
 	// sort streams by names.
 	var selectedStreams []string
-	for stream, _ := range ff.selectedStreams {
+	for stream := range ff.selectedStreams {
 		selectedStreams = append(selectedStreams, stream)
 	}
 	sort.Strings(selectedStreams)
@@ -305,14 +303,4 @@ func (ff *FFmpegCmd) String() (string, error) {
 	}
 
 	return str, nil
-}
-
-// CommandContext accepts a context and returns an *exec.Cmd to run.
-func (ff *FFmpegCmd) CommandContext(ctx context.Context) (*exec.Cmd, error) {
-	return commandContext(ctx, ff)
-}
-
-// Command returns an *exec.Cmd to run.
-func (ff *FFmpegCmd) Command() (*exec.Cmd, error) {
-	return ff.CommandContext(context.Background())
 }
