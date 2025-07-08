@@ -33,8 +33,7 @@ func NewCreateOneSubSRTCmd(srtFile, videoFile, text, start, end string) (*Create
 		return nil, fmt.Errorf("empty subtitle text")
 	}
 
-	// Escape exclamation mark.
-	text = strings.ReplaceAll(text, "!", `\!`)
+	text = strings.ReplaceAll(text, `"`, `\"`)
 
 	return &CreateOneSubSRTCmd{srtFile: srtFile, videoFile: videoFile, text: text, start: start, end: end}, nil
 }
@@ -92,7 +91,7 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 			bin = filepath.Join(FFmpegBinDir, bin)
 		}
 
-		str = fmt.Sprintf(`sec=$(%s -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "%s"); sec=$(echo $sec - %.03f | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\n%s" > "%s"`, bin, cmd.videoFile, startSec, cmd.text, cmd.srtFile)
+		str = fmt.Sprintf(`sec=$(%s -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "%s"); sec=$(echo $sec - %.03f | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec %% 3600 / 60)); ss=$((sec %% 3600 %% 60)); printf -v end "%%02d:%%02d:%%02d,000" $hh $mm $ss; printf "1\n00:00:00,000 --> %%s\n%s" $end > "%s"`, bin, cmd.videoFile, startSec, cmd.text, cmd.srtFile)
 	} else {
 		if tsEnd, err = timestamp.New(cmd.end); err != nil {
 			return "", fmt.Errorf("invalid end time format")
@@ -104,7 +103,7 @@ func (cmd *CreateOneSubSRTCmd) String() (string, error) {
 
 		end = tsEnd.StringForSRT()
 
-		str = fmt.Sprintf(`echo -ne "1\n00:00:00,000 --> %s\n%s" > "%s"`, end, cmd.text, cmd.srtFile)
+		str = fmt.Sprintf(`printf "1\n00:00:00,000 --> %s\n%s" > "%s"`, end, cmd.text, cmd.srtFile)
 	}
 
 	return str, nil

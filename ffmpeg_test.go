@@ -50,15 +50,15 @@ func Example() {
 		File:            "ed.jpg",
 		Duration:        3,
 		FadeOutDuration: 1,
-		Subtitle:        "Mimao likes father's bed...😂\\nMusic by penguinmusic: Better Day",
+		Subtitle:        "Mimao likes father's bed...😂\nMusic by penguinmusic: Better Day",
 		FontSize:        13,
 	}
 
 	clips := []Clip{
 		{File: "01.MP4", Start: "", End: "00:00:03", Subtitle: "Mido's tickling Mimao and he's enjoying...", FontSize: 13},
 		{File: "02.MOV", Start: "", End: "", Subtitle: "Mimao's playing the toy.", FontSize: 13},
-		{File: "03.MOV", Start: "00:00:01", End: "00:00:08", Subtitle: "It's hard to brush Maomi's teeth...", FontSize: 13},
-		{File: "04.MOV", Start: "00:00:02", End: "", Subtitle: "What's this???", FontSize: 13},
+		{File: "03.MOV", Start: "00:00:01", End: "00:00:08", Subtitle: "It's hard to brush Maomi's teeth!", FontSize: 13},
+		{File: "04.MOV", Start: "00:00:02", End: "", Subtitle: "\"What's this??!!\"\nCan I eat it?", FontSize: 13},
 	}
 
 	out := Output{
@@ -375,7 +375,9 @@ func Example() {
 	log.Printf("cmd.Run() succeeded")
 
 	// Output:
-	// echo -ne "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMimao likes father's bed...😂\nMusic by penguinmusic: Better Day" > "ed.srt" && echo -ne "1\n00:00:00,000 --> 00:00:03,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV"); sec=$(echo $sec - 0.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\nMimao's playing the toy." > "02.srt" && echo -ne "1\n00:00:00,000 --> 00:00:07,000\nIt's hard to brush Maomi's teeth..." > "03.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "04.MOV"); sec=$(echo $sec - 2.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; echo -ne "1\n00:00:00,000 --> $end\nWhat's this???" > "04.srt" && echo "y" | ffmpeg \
+	// printf "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && printf "1\n00:00:00,000 --> 00:00:03,000\nMimao likes father's bed...😂
+	// Music by penguinmusic: Better Day" > "ed.srt" && printf "1\n00:00:00,000 --> 00:00:03,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV"); sec=$(echo $sec - 0.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; printf "1\n00:00:00,000 --> %s\nMimao's playing the toy." $end > "02.srt" && printf "1\n00:00:00,000 --> 00:00:07,000\nIt's hard to brush Maomi's teeth!" > "03.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "04.MOV"); sec=$(echo $sec - 2.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; printf "1\n00:00:00,000 --> %s\n\"What's this??!!\"
+	// Can I eat it?" $end > "04.srt" && echo "y" | ffmpeg \
 	// -i "op.jpg" \
 	// -i "ed.jpg" \
 	// -i "01.MP4" \
