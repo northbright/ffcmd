@@ -145,33 +145,22 @@ type FFmpegCmd struct {
 	preCmds         []Cmd
 	postCmds        []Cmd
 	overwrite       bool
-	// FFmpegOptions.
-	fps int
-}
-
-// FFmpegOption represents the option of FFmpegCmd.
-type FFmpegOption func(ff *FFmpegCmd)
-
-// FFmpegOutputFPS returns the option to set FPS of FFmpeg command's output.
-func FFmpegOutputFPS(fps int) FFmpegOption {
-	return func(ff *FFmpegCmd) {
-		if fps > 0 {
-			ff.fps = fps
-		}
-	}
+	options         []string
 }
 
 // NewFFmpegCmd returns a new ffmpeg command.
 // output: ffmpeg output(e.g. "output.mp4")
 // overwrite: if overwrite output when run ffmpeg command.
 // It'll failed to generate output if output exists and overwrite is set to false.
-// options: optional options for ffmpeg(e.g. specify output FFmpegOutputFPS using [FFmpegOutputFPS]).
-func NewFFmpegCmd(output string, overwrite bool, options ...FFmpegOption) *FFmpegCmd {
-	ff := &FFmpegCmd{inputs: []string{}, output: output, fg: []*FilterChain{}, selectedStreams: make(map[string]struct{}), overwrite: overwrite}
-
-	// Update options.
-	for _, option := range options {
-		option(ff)
+// options: optional options for ffmpeg(e.g. "-r 30", "-shortest", "-crf 20").
+func NewFFmpegCmd(output string, overwrite bool, options ...string) *FFmpegCmd {
+	ff := &FFmpegCmd{
+		inputs:          []string{},
+		output:          output,
+		fg:              []*FilterChain{},
+		selectedStreams: make(map[string]struct{}),
+		overwrite:       overwrite,
+		options:         options,
 	}
 
 	return ff
@@ -276,7 +265,7 @@ func (ff *FFmpegCmd) String() (string, error) {
 
 	str += "\" \\\n"
 
-	// sort streams by names.
+	// Sort streams by names.
 	var selectedStreams []string
 	for stream := range ff.selectedStreams {
 		selectedStreams = append(selectedStreams, stream)
@@ -287,11 +276,12 @@ func (ff *FFmpegCmd) String() (string, error) {
 		str += fmt.Sprintf("-map \"%s\" \\\n", stream)
 	}
 
-	// Output options.
-	if ff.fps != 0 {
-		str += fmt.Sprintf("-r %d \\\n", ff.fps)
+	// Add options.
+	for _, option := range ff.options {
+		str += fmt.Sprintf("%s \\\n", option)
 	}
 
+	// Add output.
 	str += ff.output
 
 	for _, cmd := range ff.postCmds {

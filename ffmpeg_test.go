@@ -68,8 +68,8 @@ func Example() {
 		FPS:  30,
 	}
 
-	// Create ffmpeg command with output file and specify FPS option.
-	ff := ffcmd.NewFFmpegCmd("output.mp4", true, ffcmd.FFmpegOutputFPS(out.FPS))
+	// Create ffmpeg command.
+	ff := ffcmd.NewFFmpegCmd("output.mp4", true, "-r 30", "-preset veryslow", "-shortest")
 
 	// Create op video filterchain.
 	op_v := ffcmd.NewFilterChain("[op_v]")
@@ -402,5 +402,7 @@ func Example() {
 	// -map "[outa_merged_bgm]" \
 	// -map "[outv]" \
 	// -r 30 \
+	// -preset veryslow \
+	// -shortest \
 	// output.mp4 && rm "op.srt" && rm "ed.srt" && rm "01.srt" && rm "02.srt" && rm "03.srt" && rm "04.srt"
 }
