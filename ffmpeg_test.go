@@ -2,6 +2,7 @@ package ffcmd_test
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -16,211 +17,91 @@ import (
 
 func Example() {
 	type Clip struct {
-		File     string
-		Start    string
-		End      string
-		Subtitle string
-		FontSize int
-	}
-
-	type ImageClip struct {
-		File            string
-		Duration        int
-		FadeOutDuration int
-		Subtitle        string
-		FontSize        int
+		File     string `json:"file"`
+		Start    string `json:"start"`
+		End      string `json:"end"`
+		Subtitle string `json:"subtitle"`
 	}
 
 	type Output struct {
-		File string
-		W    int
-		H    int
-		FPS  int
+		File string `json:"file"`
+		W    int    `json:"w"`
+		H    int    `json:"h"`
 	}
 
-	op := ImageClip{
-		File:            "op.jpg",
-		Duration:        3,
-		FadeOutDuration: 1,
-		Subtitle:        "Good Times with Maomi & Mimao",
-		FontSize:        15,
+	type Highlights struct {
+		Clips []*Clip `json:"clips"`
+		BGM   string  `json:"bgm"`
+		Out   *Output `json:"output"`
 	}
 
-	ed := ImageClip{
-		File:            "ed.jpg",
-		Duration:        3,
-		FadeOutDuration: 1,
-		Subtitle:        "Mimao likes father's bed...😂\nMusic by penguinmusic: Better Day",
-		FontSize:        13,
+	jsonStr := `
+{
+    "clips": [
+        {
+		    "file": "01.MP4",
+			"start": "",
+			"end": "00:00:03",
+			"subtitle": "Mido's tickling Mimao and he's enjoying..."
+	    },
+        {
+            "file": "02.MOV",
+            "start": "",
+            "end": "",
+            "subtitle": "Mimao's playing the toy."
+        },
+        {
+            "file": "03.MOV",
+			"start": "00:00:01",
+			"end": "00:00:08",
+            "subtitle": "It's hard to brush Maomi's teeth!"
+        },
+        {
+            "file": "04.MOV",
+            "start": "00:00:02",
+            "end": "",
+            "subtitle": "\"What's this??!!\"\nCan I eat it?"
+        }
+	],
+	"bgm": "penguinmusic-Better Day.mp3",
+	"output": { "file": "output.mp4", "w": 720, "h": 960 }
+}
+`
+
+	hl := &Highlights{}
+
+	if err := json.Unmarshal([]byte(jsonStr), hl); err != nil {
+		log.Printf("json.Unmarshal() error: %v", err)
+		return
 	}
 
-	clips := []Clip{
-		{File: "01.MP4", Start: "", End: "00:00:03", Subtitle: "Mido's tickling Mimao and he's enjoying...", FontSize: 13},
-		{File: "02.MOV", Start: "", End: "", Subtitle: "Mimao's playing the toy.", FontSize: 13},
-		{File: "03.MOV", Start: "00:00:01", End: "00:00:08", Subtitle: "It's hard to brush Maomi's teeth!", FontSize: 13},
-		{File: "04.MOV", Start: "00:00:02", End: "", Subtitle: "\"What's this??!!\"\nCan I eat it?", FontSize: 13},
-	}
-
-	out := Output{
-		File: "output.mp4",
-		W:    720,
-		H:    960,
-		FPS:  30,
-	}
-
-	// Create ffmpeg command.
-	ff := ffcmd.NewFFmpegCmd("output.mp4", true, "-r 30", "-preset veryslow", "-shortest")
-
-	// Create op video filterchain.
-	op_v := ffcmd.NewFilterChain("[op_v]")
-
-	// Add "op.jpg" as ffmpeg input and get the input index.
-	// Add video stream of "op.jpg"([0:v:0]) as op video chain's input.
-	op_v.AddInputByID(ff.AddInput(op.File), "v", 0)
-
-	// Create op video filters.
-	fps := fmt.Sprintf("fps=%d", out.FPS)
-	loop := fmt.Sprintf("loop=loop=%d:size=1", op.Duration*out.FPS)
-	scale := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease", out.W, out.H)
-	pad := fmt.Sprintf("pad=%d:%d:(ow-iw)/2:(oh-ih)/2", out.W, out.H)
-	setsar := "setsar=1:1"
-	format := "format=pix_fmts=yuv420p"
-
-	// Chain op video filters.
-	op_v.Chain(fps).Chain(loop).Chain(scale).Chain(pad).Chain(setsar).Chain(format)
-
-	// Check if need to chain subtitles filter.
-	if op.Subtitle != "" {
-		srtFile := strings.Replace(op.File, filepath.Ext(op.File), ".srt", -1)
-		createCmd, err := ffcmd.NewCreateOneSubSRTCmdForImageClip(srtFile, op.Subtitle, float32(op.Duration))
-		if err != nil {
-			log.Printf("ffcmd.NewCreateOneSubSRTCmdForImageClip() error: %v", err)
-			return
-		}
-		// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
-		ff.AddPreCmd(createCmd)
-
-		removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
-		if err != nil {
-			log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
-			return
-		}
-		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-		ff.AddPostCmd(removeCmd)
-
-		// Create and chain subtitles filter.
-		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, op.FontSize)
-		op_v.Chain(subtitles)
-	}
-
-	// Chain fade filter.
-	fade := fmt.Sprintf("fade=t=out:st=%d:d=%d", op.Duration-op.FadeOutDuration, op.FadeOutDuration)
-	op_v.Chain(fade)
-
-	// Create op audio filterchain.
-	op_a := ffcmd.NewFilterChain("[op_a]")
-
-	// Create op audio fiters.
-	aevalsrc := fmt.Sprintf("aevalsrc=0:d=%d", op.Duration)
-
-	// Chain ed audio filters.
-	op_a.Chain(aevalsrc)
-
-	// Add op video / audio filterchain to filtergraph.
-	ff.Chain(op_v)
-	ff.Chain(op_a)
-
-	// Create ed video filterchain.
-	ed_v := ffcmd.NewFilterChain("[ed_v]")
-
-	// Add "ed.jpg" as ffmpeg input and get the input index.
-	// Add video stream of "ed.jpg"([1:v:0]) as ed's input.
-	ed_v.AddInputByID(ff.AddInput(ed.File), "v", 0)
-
-	// Create ed video filters.
-	loop = fmt.Sprintf("loop=loop=%d:size=1", ed.Duration*out.FPS)
-
-	// Chain ed video filters.
-	ed_v.Chain(fps).Chain(loop).Chain(scale).Chain(pad).Chain(setsar).Chain(format)
-
-	// Check if need to chain subtitles filter.
-	if ed.Subtitle != "" {
-		srtFile := strings.Replace(ed.File, filepath.Ext(ed.File), ".srt", -1)
-		createCmd, err := ffcmd.NewCreateOneSubSRTCmdForImageClip(srtFile, ed.Subtitle, float32(ed.Duration))
-		if err != nil {
-			log.Printf("ffcmd.NewCreateOneSubSRTCmdForImageClip() error: %v", err)
-			return
-		}
-		// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
-		ff.AddPreCmd(createCmd)
-
-		removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
-		if err != nil {
-			log.Printf("ffcmd.NewRemoveOneSubSRTCmd() error: %v", err)
-			return
-		}
-		// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-		ff.AddPostCmd(removeCmd)
-
-		// Create and chain subtitles filter.
-		subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, ed.FontSize)
-		ed_v.Chain(subtitles)
-	}
-
-	// Chain fade filter.
-	fade = fmt.Sprintf("fade=t=out:st=%d:d=%d", ed.Duration-ed.FadeOutDuration, ed.FadeOutDuration)
-	ed_v.Chain(fade)
-
-	// Create audio filterchain.
-	ed_a := ffcmd.NewFilterChain("[ed_a]")
-
-	// Create ed audio fiters.
-	aevalsrc = fmt.Sprintf("aevalsrc=0:d=%d", ed.Duration)
-
-	// Chain ed audio filters.
-	ed_a.Chain(aevalsrc)
-
-	// Add ed video / audio filterchain to filtergraph.
-	ff.Chain(ed_v)
-	ff.Chain(ed_a)
-
-	// Create concat filter chain.
-	concatFC := ffcmd.NewFilterChain("[outv]", "[outa]")
-
-	// Add op video and audio filterchain's output as concat filterchain's input.
-	concatFC.AddInputByOutput(op_v, 0)
-	concatFC.AddInputByOutput(op_a, 0)
+	ffmpeg := ffcmd.NewFFmpegCmd("output.mp4", true, "-preset veryslow", "-shortest")
+	concatFC := ffcmd.NewFilterChain("[out_v]")
 
 	// Segments count to concat.
-	// Initialized to 2: op + ed.
-	n := 2
+	n := 0
 
 	// Loop all video clips.
-	for i, c := range clips {
+	for i, c := range hl.Clips {
 		// Create clip video filter chain.
 		clip_v := ffcmd.NewFilterChain(fmt.Sprintf("[clip_%02d_v]", i))
 
-		// Create clip audio filter chain.
-		clip_a := ffcmd.NewFilterChain(fmt.Sprintf("[clip_%02d_a]", i))
-
 		// Add video file as ffmpeg input and get the input index.
-		// Add video / audio stream of the file([X:v:0] / [X:a:0], X is the ffmpeg input id) as clip's input.
-		id := ff.AddInput(c.File)
+		// Add video stream of the file([X:v:0], X is the ffmpeg input id) as clip's input.
+		id := ffmpeg.AddInput(c.File)
 		clip_v.AddInputByID(id, "v", 0)
-		clip_a.AddInputByID(id, "a", 0)
 
 		// Create and chain scale, pad, setsar filters.
-		scale := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease", out.W, out.H)
-		pad := fmt.Sprintf("pad=%d:%d:(ow-iw)/2:(oh-ih)/2", out.W, out.H)
+		scale := fmt.Sprintf("scale=%d:%d:force_original_aspect_ratio=decrease", hl.Out.W, hl.Out.H)
+		pad := fmt.Sprintf("pad=%d:%d:(ow-iw)/2:(oh-ih)/2", hl.Out.W, hl.Out.H)
 		setsar := "setsar=1:1"
 
 		clip_v.Chain(scale).Chain(pad).Chain(setsar)
 
-		// Check if need to chain trim, setpts / atrim, asetpts filter.
+		// Check if need to chain trim, setpts filter.
 		if c.Start != c.End {
-			// Create clip video / audio filters.
+			// Create clip video filters.
 			trim := "trim="
-			atrim := "atrim="
 
 			if c.Start != "" {
 				start, err := timestamp.New(c.Start)
@@ -229,7 +110,6 @@ func Example() {
 					return
 				}
 				trim += fmt.Sprintf("start=%s:", start.SecondStr())
-				atrim += fmt.Sprintf("start=%s:", start.SecondStr())
 			}
 
 			if c.End != "" {
@@ -239,21 +119,14 @@ func Example() {
 					return
 				}
 				trim += fmt.Sprintf("end=%s", end.SecondStr())
-				atrim += fmt.Sprintf("end=%s", end.SecondStr())
 			} else {
 				trim = strings.TrimSuffix(trim, ":")
-				atrim = strings.TrimSuffix(atrim, ":")
 			}
 
 			setpts := "setpts=PTS-STARTPTS"
 
 			// Chain trim and setpts filter.
 			clip_v.Chain(trim).Chain(setpts)
-
-			asetpts := "asetpts=PTS-STARTPTS"
-
-			// Chain atrim and asetpts filter.
-			clip_a.Chain(atrim).Chain(asetpts)
 		}
 
 		// Check if need to chain subtitles filter.
@@ -265,7 +138,7 @@ func Example() {
 				return
 			}
 			// Add command to create SRT file as ffmpeg's pre-commands(set-up commmands).
-			ff.AddPreCmd(createCmd)
+			ffmpeg.AddPreCmd(createCmd)
 
 			removeCmd, err := ffcmd.NewRemoveOneSubSRTCmd(srtFile)
 			if err != nil {
@@ -273,66 +146,42 @@ func Example() {
 				return
 			}
 			// Add command to remove created file as ffmpeg's post-commands(clean-up commands).
-			ff.AddPostCmd(removeCmd)
+			ffmpeg.AddPostCmd(removeCmd)
 
 			// Create and chain subtitles filter.
-			subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=%d'", srtFile, c.FontSize)
+			subtitles := fmt.Sprintf("subtitles='%s':force_style='Fontsize=13'", srtFile)
 			clip_v.Chain(subtitles)
 		}
 
-		// Add clip video / audio filterchain to filtergraph.
-		ff.Chain(clip_v)
-		ff.Chain(clip_a)
+		// Add clip video filterchain to filtergraph.
+		ffmpeg.Chain(clip_v)
 
-		// Add clip video / audio filter chain's output as concat filterchain's input.
+		// Add clip video filter chain's output as concat filterchain's input.
 		concatFC.AddInputByOutput(clip_v, 0)
-		concatFC.AddInputByOutput(clip_a, 0)
 
 		// Increase segment count.
 		n += 1
 	}
 
-	// Add ed video and audio filterchain's output as concat filterchain's input.
-	concatFC.AddInputByOutput(ed_v, 0)
-	concatFC.AddInputByOutput(ed_a, 0)
-
 	// Create concat filters.
-	concat := fmt.Sprintf("concat=n=%d:v=1:a=1", n)
+	concat := fmt.Sprintf("concat=n=%d:v=1:a=0", n)
 
 	// Chain concat filters.
 	concatFC.Chain(concat)
 
 	// Add concat filterchain to filtergraph.
-	ff.Chain(concatFC)
+	ffmpeg.Chain(concatFC)
 
-	// Add BGM as command input.
-	id := ff.AddInput("penguinmusic-Better Day.mp3")
+	// Select concat filterchain's output.
+	ffmpeg.MapByOutput(concatFC, 0)
 
-	// Create filterchain to merge BGM and original audio streams.
-	bgmFC := ffcmd.NewFilterChain("[outa_merged_bgm]")
-	bgmFC.AddInputByID(id, "a", 0)
-	bgmFC.AddInputByOutput(concatFC, 1)
+	// Add BGM as command input and select the BGM audio stream.
+	ffmpeg.MapByID(ffmpeg.AddInput(hl.BGM), "a", 0)
 
-	// Create amerge filter.
-	amerge := "amerge=inputs=2"
-
-	// Create pan filter.
-	pan := "pan=stereo|c0<c0+c2|c1<c1+c3"
-
-	// Chain filters.
-	bgmFC.Chain(amerge).Chain(pan)
-
-	// Add BGM filterchain.
-	ff.Chain(bgmFC)
-
-	// Select output streams.
-	// If none stream is selected, it'll auto select last filterchain's labeled outputs.
-	ff.MapByOutput(concatFC, 0)
-	ff.MapByOutput(bgmFC, 0)
-
-	str, err := ff.String()
+	// Output the raw FFmpeg string.
+	str, err := ffmpeg.String()
 	if err != nil {
-		fmt.Printf("ff.String() error: %v", err)
+		fmt.Printf("ffmpeg.String() error: %v", err)
 		return
 	}
 
@@ -342,7 +191,7 @@ func Example() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	cmd, err := ffcmd.CommandContext(ctx, ff)
+	cmd, err := ffcmd.CommandContext(ctx, ffmpeg)
 	if err != nil {
 		log.Printf("ffcmd.CommandContext() error: %v", err)
 		return
@@ -375,34 +224,22 @@ func Example() {
 	log.Printf("cmd.Run() succeeded")
 
 	// Output:
-	// printf "1\n00:00:00,000 --> 00:00:03,000\nGood Times with Maomi & Mimao" > "op.srt" && printf "1\n00:00:00,000 --> 00:00:03,000\nMimao likes father's bed...😂
-	// Music by penguinmusic: Better Day" > "ed.srt" && printf "1\n00:00:00,000 --> 00:00:03,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV"); sec=$(echo $sec - 0.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; printf "1\n00:00:00,000 --> %s\nMimao's playing the toy." $end > "02.srt" && printf "1\n00:00:00,000 --> 00:00:07,000\nIt's hard to brush Maomi's teeth!" > "03.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "04.MOV"); sec=$(echo $sec - 2.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; printf "1\n00:00:00,000 --> %s\n\"What's this??!!\"
+	// printf "1\n00:00:00,000 --> 00:00:03,000\nMido's tickling Mimao and he's enjoying..." > "01.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "02.MOV"); sec=$(echo $sec - 0.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; printf "1\n00:00:00,000 --> %s\nMimao's playing the toy." $end > "02.srt" && printf "1\n00:00:00,000 --> 00:00:07,000\nIt's hard to brush Maomi's teeth!" > "03.srt" && sec=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "04.MOV"); sec=$(echo $sec - 2.000 | bc); sec=$(echo $sec | awk -F. '{ print $1 }'); hh=$((sec / 3600)); mm=$((sec % 3600 / 60)); ss=$((sec % 3600 % 60)); printf -v end "%02d:%02d:%02d,000" $hh $mm $ss; printf "1\n00:00:00,000 --> %s\n\"What's this??!!\"
 	// Can I eat it?" $end > "04.srt" && echo "y" | ffmpeg \
-	// -i "op.jpg" \
-	// -i "ed.jpg" \
 	// -i "01.MP4" \
 	// -i "02.MOV" \
 	// -i "03.MOV" \
 	// -i "04.MOV" \
 	// -i "penguinmusic-Better Day.mp3" \
 	// -filter_complex " \
-	// [0:v:0]fps=30,loop=loop=90:size=1,scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,format=pix_fmts=yuv420p,subtitles='op.srt':force_style='Fontsize=15',fade=t=out:st=2:d=1[op_v];
-	// aevalsrc=0:d=3[op_a];
-	// [1:v:0]fps=30,loop=loop=90:size=1,scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,format=pix_fmts=yuv420p,subtitles='ed.srt':force_style='Fontsize=13',fade=t=out:st=2:d=1[ed_v];
-	// aevalsrc=0:d=3[ed_a];
-	// [2:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=end=3.000,setpts=PTS-STARTPTS,subtitles='01.srt':force_style='Fontsize=13'[clip_00_v];
-	// [2:a:0]atrim=end=3.000,asetpts=PTS-STARTPTS[clip_00_a];
-	// [3:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,subtitles='02.srt':force_style='Fontsize=13'[clip_01_v];
-	// [4:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=1.000:end=8.000,setpts=PTS-STARTPTS,subtitles='03.srt':force_style='Fontsize=13'[clip_02_v];
-	// [4:a:0]atrim=start=1.000:end=8.000,asetpts=PTS-STARTPTS[clip_02_a];
-	// [5:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=2.000,setpts=PTS-STARTPTS,subtitles='04.srt':force_style='Fontsize=13'[clip_03_v];
-	// [5:a:0]atrim=start=2.000,asetpts=PTS-STARTPTS[clip_03_a];
-	// [op_v][op_a][clip_00_v][clip_00_a][clip_01_v][3:a:0][clip_02_v][clip_02_a][clip_03_v][clip_03_a][ed_v][ed_a]concat=n=6:v=1:a=1[outv][outa];
-	// [6:a:0][outa]amerge=inputs=2,pan=stereo|c0<c0+c2|c1<c1+c3[outa_merged_bgm]" \
-	// -map "[outa_merged_bgm]" \
-	// -map "[outv]" \
-	// -r 30 \
+	// [0:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=end=3.000,setpts=PTS-STARTPTS,subtitles='01.srt':force_style='Fontsize=13'[clip_00_v];
+	// [1:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,subtitles='02.srt':force_style='Fontsize=13'[clip_01_v];
+	// [2:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=1.000:end=8.000,setpts=PTS-STARTPTS,subtitles='03.srt':force_style='Fontsize=13'[clip_02_v];
+	// [3:v:0]scale=720:960:force_original_aspect_ratio=decrease,pad=720:960:(ow-iw)/2:(oh-ih)/2,setsar=1:1,trim=start=2.000,setpts=PTS-STARTPTS,subtitles='04.srt':force_style='Fontsize=13'[clip_03_v];
+	// [clip_00_v][clip_01_v][clip_02_v][clip_03_v]concat=n=4:v=1:a=0[out_v]" \
+	// -map "4:a:0" \
+	// -map "[out_v]" \
 	// -preset veryslow \
 	// -shortest \
-	// output.mp4 && rm "op.srt" && rm "ed.srt" && rm "01.srt" && rm "02.srt" && rm "03.srt" && rm "04.srt"
+	// output.mp4 && rm "01.srt" && rm "02.srt" && rm "03.srt" && rm "04.srt"
 }

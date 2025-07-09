@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 // FilterChain represents the filterchain of ffmpeg.
@@ -199,7 +200,7 @@ func (ff *FFmpegCmd) Map(stream string) {
 
 // MapByID selects stream by input index, stream type and index of stream as ffmpeg output.
 func (ff *FFmpegCmd) MapByID(inputID int, streamType string, streamID int) {
-	stream := fmt.Sprintf("[%d:%s:%d]", inputID, streamType, streamID)
+	stream := fmt.Sprintf("%d:%s:%d", inputID, streamType, streamID)
 	if _, ok := ff.selectedStreams[stream]; !ok {
 		ff.selectedStreams[stream] = struct{}{}
 	}
@@ -208,6 +209,14 @@ func (ff *FFmpegCmd) MapByID(inputID int, streamType string, streamID int) {
 // MapByOutput selects the output stream of filterchain by index as ffmpeg output dynamically.
 func (ff *FFmpegCmd) MapByOutput(fc *FilterChain, id int) {
 	stream := fc.Output(id)
+
+	// If the output is not a label but an input stream with index(e.g. [0:v:0]),
+	// remove the "[" and "]" or -map will fail.
+	if strings.Contains(stream, ":") {
+		stream = strings.ReplaceAll(stream, "[", "")
+		stream = strings.ReplaceAll(stream, "]", "")
+	}
+
 	ff.Map(stream)
 }
 
