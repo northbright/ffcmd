@@ -21,6 +21,7 @@ type filterChainOutputData struct {
 }
 
 // NewFilterChain returns a filterchain by pre-defined outputs(labels) in the "[OUTPUT_LABEL]" format.
+// e.g. concatFilterChain := ffcmd.NewFilterChain("[out_v]", "[out_a]")
 func NewFilterChain(outputs ...string) *FilterChain {
 	return &FilterChain{inputs: []any{}, outputs: outputs, filters: []string{}}
 }
