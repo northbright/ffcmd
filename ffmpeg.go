@@ -144,8 +144,8 @@ type FFmpegCmd struct {
 	output          string
 	fg              []*FilterChain
 	selectedStreams map[string]struct{}
-	preCmds         []Cmd
-	postCmds        []Cmd
+	preCmds         []string
+	postCmds        []string
 	overwrite       bool
 	options         []string
 }
@@ -176,12 +176,12 @@ func (ff *FFmpegCmd) AddInput(in string) int {
 }
 
 // AddPreCmd adds the command(set-up) to run before ffmpeg.
-func (ff *FFmpegCmd) AddPreCmd(cmd Cmd) {
+func (ff *FFmpegCmd) AddPreCmd(cmd string) {
 	ff.preCmds = append(ff.preCmds, cmd)
 }
 
 // AddPostCmd adds the command(clean-up) to run after ffmpeg.
-func (ff *FFmpegCmd) AddPostCmd(cmd Cmd) {
+func (ff *FFmpegCmd) AddPostCmd(cmd string) {
 	ff.postCmds = append(ff.postCmds, cmd)
 }
 
@@ -231,12 +231,11 @@ func (ff *FFmpegCmd) MapByOutputs(fc *FilterChain) {
 // String returns the ffmpeg command string to run.
 func (ff *FFmpegCmd) String() (string, error) {
 	str := ""
-	for _, cmd := range ff.preCmds {
-		s, err := cmd.String()
-		if err != nil {
-			return "", fmt.Errorf("add pre-cmd error: %v", err)
-		}
-		str += fmt.Sprintf(`%s && `, s)
+
+	// Add the commands to run before ffmpeg.
+	if len(ff.preCmds) > 0 {
+		str = ConcatCmds("", ff.preCmds...)
+		str += " && "
 	}
 
 	// Check if overwrite output.
@@ -294,12 +293,9 @@ func (ff *FFmpegCmd) String() (string, error) {
 	// Add output.
 	str += ff.output
 
-	for _, cmd := range ff.postCmds {
-		s, err := cmd.String()
-		if err != nil {
-			return "", fmt.Errorf("add post-cmd error: %v", err)
-		}
-		str += fmt.Sprintf(` && %s`, s)
+	// Add the commands to run after ffmpeg.
+	if len(ff.postCmds) > 0 {
+		str = ConcatCmds(str, ff.postCmds...)
 	}
 
 	return str, nil

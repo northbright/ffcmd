@@ -1,2 +1,4 @@
-github.com/northbright/timestamp v0.0.1 h1:FI885Xq6Ky/DfRkaozIZyRJ/W6FvMpsr7sAi3dd12Cc=
-github.com/northbright/timestamp v0.0.1/go.mod h1:q63O4mrJxdlWYs0a7z14pW5vwXAgw5w6AmTH3bn8poI=
+github.com/northbright/pathelper v1.0.9 h1:maqqdZ/0c7bHooJ4BWoncAOkQkb9xUfnxWhdAHjB2Q0=
+github.com/northbright/pathelper v1.0.9/go.mod h1:1BNQUZB7Bx+sgnVoOZVtnOL1+0azONKaVXjZ6a9/vE8=
+github.com/northbright/timestamp v0.0.2 h1:8Kba/2MP94wUeCLeL1nY4QABIRj2CdKFLeOHL4n/GuU=
+github.com/northbright/timestamp v0.0.2/go.mod h1:q63O4mrJxdlWYs0a7z14pW5vwXAgw5w6AmTH3bn8poI=
