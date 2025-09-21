@@ -2,7 +2,6 @@ package ffcmd
 
 import (
 	"fmt"
-	"path/filepath"
 	"sort"
 	"strings"
 )
@@ -140,6 +139,7 @@ func (fc *FilterChain) String() string {
 
 // FFmpegCmd represents the ffmpeg command.
 type FFmpegCmd struct {
+	ffmpegPath      string
 	inputs          []string
 	output          string
 	fg              []*FilterChain
@@ -151,12 +151,14 @@ type FFmpegCmd struct {
 }
 
 // NewFFmpegCmd returns a new ffmpeg command.
+// ffmpegPath: path of ffmpeg binary. It'll be set to "ffmpeg" if it's empty.
 // output: ffmpeg output(e.g. "output.mp4")
 // overwrite: if overwrite output when run ffmpeg command.
 // It'll failed to generate output if output exists and overwrite is set to false.
 // options: optional options for ffmpeg(e.g. "-r 30", "-shortest", "-crf 20").
-func NewFFmpegCmd(output string, overwrite bool, options ...string) *FFmpegCmd {
+func NewFFmpegCmd(ffmpegPath string, output string, overwrite bool, options ...string) *FFmpegCmd {
 	ff := &FFmpegCmd{
+		ffmpegPath:      ffmpegPath,
 		inputs:          []string{},
 		output:          output,
 		fg:              []*FilterChain{},
@@ -244,8 +246,8 @@ func (ff *FFmpegCmd) String() (string, error) {
 	}
 
 	bin := "ffmpeg"
-	if FFmpegBinDir != "" {
-		bin = filepath.Join(FFmpegBinDir, bin)
+	if ff.ffmpegPath != "" {
+		bin = ff.ffmpegPath
 	}
 
 	str += fmt.Sprintf("%s \\\n", bin)

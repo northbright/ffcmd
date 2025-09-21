@@ -1,21 +1,15 @@
 package ffcmd_test
 
-/*
-type ClipData struct {
-	File     string
-	Start    string
-	End      string
-	Subtitle string
-}
+import (
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
 
-var clipData = []ClipData{
-	ClipData{File: "01.MP4", Start: "", End: "00:00:03", Subtitle: "Mido's tickling Mimao and he's enjoying..."},
-	ClipData{File: "02.MOV", Start: "", End: "", Subtitle: "Mimao's playing the toy."},
-	ClipData{File: "03.MOV", Start: "00:00:01", End: "00:00:08", Subtitle: "It's hard to brush Maomi's teeth!"},
-	ClipData{File: "04.MOV", Start: "00:00:02", End: "", Subtitle: "\"What's this??!!\"\nCan I eat it?"},
-}
+	"github.com/northbright/ffcmd"
+)
 
-func Example_NewGetDurationCmd() {
+func ExampleNewGetDurationCmd() {
 	var cmds []string
 
 	// Append the first command to the command slice.
@@ -66,4 +60,3 @@ func Example_NewGetDurationCmd() {
 	//
 	// total=24.800
 }
-*/

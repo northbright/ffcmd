@@ -5,14 +5,14 @@ ffcmd is a [Golang](https://golang.org) package to generate [ffmpeg](https://ffm
 ## Features
 * Use another filterchain's output as input programmatically.
 * Use input as output directly if there's no filter in the filterchain automatically.
-* Provide functions to generate commands to create and remove SRT file which cotains one subtitile text only. 
+* Provide functions to generate commands to create and remove SRT file which contains one subtitile text only. 
 
 ## Generated FFmpeg command
 It uses `-filter_complex` by default.
 
 The generated command looks like:
 
-```bash
+```sh
 ffmpeg \
   -i "FILE_1"
   -i "FILE_2"
