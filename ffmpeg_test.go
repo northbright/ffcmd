@@ -200,8 +200,8 @@ func Example() {
 	// Add concat filterchain to filtergraph.
 	ffmpeg.Chain(concatFC)
 
-	// Select concat filterchain's output.
-	ffmpeg.MapByOutput(concatFC, 0)
+	// Select concat filterchain's output stream.
+	ffmpeg.MapOutput(concatFC, 0)
 
 	// Get BGM fade out start time.
 	getBGMFadeOutStartCmd := fmt.Sprintf("st=$(echo $%s - %d | bc) && st=$(printf \"%%.3f\" $st)", totalDurationVarName, hl.BGMFadeOutDuration)
@@ -219,7 +219,7 @@ func Example() {
 	ffmpeg.Chain(bgm)
 
 	// Select output of BGM filterchain.
-	ffmpeg.MapByOutput(bgm, 0)
+	ffmpeg.MapOutput(bgm, 0)
 
 	// Output the raw FFmpeg string.
 	str, err := ffmpeg.String()
