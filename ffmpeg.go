@@ -201,21 +201,21 @@ func (ff *FFmpegCmd) Map(stream string) {
 	}
 }
 
-// MapID selects a stream.
+// MapByID selects a stream by specifing input ID, stream type and stream ID.
 // inputID: stream index.
 // streamType: stream type(e.g. "v" for video stream, "a" for audio stream).
 // streadmID: index of stream.
-func (ff *FFmpegCmd) MapID(inputID int, streamType string, streamID int) {
+func (ff *FFmpegCmd) MapByID(inputID int, streamType string, streamID int) {
 	stream := fmt.Sprintf("%d:%s:%d", inputID, streamType, streamID)
 	if _, ok := ff.selectedStreams[stream]; !ok {
 		ff.selectedStreams[stream] = struct{}{}
 	}
 }
 
-// MapOutput selects an output stream of a filterchain.
+// MapByOutput selects an output stream of a filterchain.
 // fc: filerchain to select.
 // id: stream id of output streams of the filterchain.
-func (ff *FFmpegCmd) MapOutput(fc *FilterChain, id int) {
+func (ff *FFmpegCmd) MapByOutput(fc *FilterChain, id int) {
 	stream := fc.Output(id)
 
 	// If the output is not a label but an input stream with index(e.g. [0:v:0]),
@@ -228,9 +228,9 @@ func (ff *FFmpegCmd) MapOutput(fc *FilterChain, id int) {
 	ff.Map(stream)
 }
 
-// MapOutputs selects all output streams of a filterchain.
+// MapByOutputs selects all output streams of a filterchain.
 // fc: filerchain to select.
-func (ff *FFmpegCmd) MapOutputs(fc *FilterChain) {
+func (ff *FFmpegCmd) MapByOutputs(fc *FilterChain) {
 	for _, stream := range fc.Outputs() {
 		ff.Map(stream)
 	}
@@ -276,7 +276,7 @@ func (ff *FFmpegCmd) String() (string, error) {
 			str += ";\n"
 		} else {
 			// Complex filtergraph outputs streams with labeled pads must be mapped once and exactly once.
-			ff.MapOutputs(fc)
+			ff.MapByOutputs(fc)
 		}
 	}
 
